@@ -136,11 +136,14 @@
         <div class="canvas-wrapper">
             <canvas id="graphThrust" width="900" height="140"></canvas>
         </div>
+        <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
+            Avg Thrust: Accelerating — <span id="val-avg-thrust">0</span> N
+        </div>
         <div class="canvas-wrapper">
             <canvas id="graphPower" width="900" height="140"></canvas>
         </div>
         <div class="canvas-wrapper">
-            <canvas id="graphThrustSign" width="900" height="40"></canvas>
+            <canvas id="graphAvgPower" width="900" height="140"></canvas>
         </div>
 
         <div id="controls">
@@ -228,9 +231,10 @@ let state = {
     heave_amp: 0.20,
     pathX: [],
     pathZ: [],
-    thrustHistory: [], 
+    thrustHistory: [],
     avgThrustHistory: [],
-    powerHistory: []
+    powerHistory: [],
+    avgPowerHistory: []
 };
 
 // --- NACA PROFILE ---
@@ -251,13 +255,14 @@ const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 const ctxThrust = document.getElementById('graphThrust').getContext('2d');
 const ctxPower = document.getElementById('graphPower').getContext('2d');
-const ctxThrustSign = document.getElementById('graphThrustSign').getContext('2d');
+const ctxAvgPower = document.getElementById('graphAvgPower').getContext('2d');
 
 const ui = {
     time: document.getElementById('val-time'),
     speed: document.getElementById('val-speed'),
     watts: document.getElementById('val-watts'),
     avgWatts: document.getElementById('val-avg-watts'),
+    avgThrust: document.getElementById('val-avg-thrust'),
     
     // Angle Displays
     pitch: document.getElementById('val-pitch'),
@@ -524,6 +529,77 @@ function drawSignGraph(ctx, data, title) {
     ctx.beginPath(); ctx.moveTo(leftMargin, topMargin + plotH/2); ctx.lineTo(w - rightMargin, topMargin + plotH/2); ctx.stroke();
 }
 
+function drawSustainabilityGauge(ctx, avgThrust, maxThrustRef) {
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const margin = 8;
+    const gaugeW = w - 2 * margin;
+    const gaugeH = h - 2 * margin;
+    const centerX = margin + gaugeW / 2;
+    const centerY = margin + gaugeH / 2;
+
+    // Clamp avgThrust to reasonable range
+    const clampedThrust = Math.max(-maxThrustRef, Math.min(maxThrustRef, avgThrust));
+    const normalized = clampedThrust / maxThrustRef; // -1 to +1
+
+    // Background bar (light gray)
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(margin, margin, gaugeW, gaugeH);
+
+    // Split into left (negative/red) and right (positive/green) halves
+    const halfW = gaugeW / 2;
+
+    // Left half: negative/deceleration (red)
+    ctx.fillStyle = 'rgba(255, 100, 100, 0.2)';
+    ctx.fillRect(margin, margin, halfW, gaugeH);
+
+    // Right half: positive/acceleration (green)
+    ctx.fillStyle = 'rgba(100, 200, 100, 0.2)';
+    ctx.fillRect(margin + halfW, margin, halfW, gaugeH);
+
+    // Fill indicator based on normalized thrust
+    if (normalized < 0) {
+        // Deceleration: fill from center left
+        const fillW = Math.abs(normalized) * halfW;
+        ctx.fillStyle = 'rgba(220, 50, 50, 0.6)';
+        ctx.fillRect(centerX - fillW, margin, fillW, gaugeH);
+    } else {
+        // Acceleration: fill from center right
+        const fillW = normalized * halfW;
+        ctx.fillStyle = 'rgba(80, 180, 80, 0.6)';
+        ctx.fillRect(centerX, margin, fillW, gaugeH);
+    }
+
+    // Center line (zero)
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(centerX, margin);
+    ctx.lineTo(centerX, margin + gaugeH);
+    ctx.stroke();
+
+    // Border
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(margin, margin, gaugeW, gaugeH);
+
+    // Label text
+    ctx.fillStyle = '#333';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Decel', margin + 4, margin + 12);
+    ctx.textAlign = 'right';
+    ctx.fillText('Accel', w - margin - 4, margin + 12);
+
+    // Show numeric value
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = (normalized >= 0) ? '#008000' : '#c00000';
+    ctx.fillText(avgThrust.toFixed(0) + ' N', centerX, margin + gaugeH - 2);
+}
+
 
 // --- MAIN LOOP ---
 function render() {
@@ -602,11 +678,37 @@ function render() {
     drawSimpleGraph(ctxThrust, state.thrustHistory, "NET THRUST (N)", "rgba(0,128,0,0.35)", "rgba(255,0,0,0.28)");
     drawSimpleGraph(ctxPower, state.powerHistory, "RIDER POWER (Watts)", "rgba(255,165,0,0.4)", null);
 
+    // Compute and track average power over at least 4 pump cycles
+    // Cycle period in seconds = 1/freq
+    const cyclePeriod = 1.0 / state.freq;
+    // Samples per cycle = cyclePeriod / dt
+    const samplesPerCycle = cyclePeriod / state.dt;
+    // Window size = 4 cycles worth of samples
+    const windowSize = Math.ceil(samplesPerCycle * 4);
+    // Get the last windowSize samples (or all if fewer available)
+    const avgPowerWindow = state.powerHistory.slice(Math.max(0, state.powerHistory.length - windowSize));
+    const avgPower = (avgPowerWindow.length > 0) ? (avgPowerWindow.reduce((a,b)=>a+b,0)/avgPowerWindow.length) : 0;
+    state.avgPowerHistory.push(avgPower);
+    if (state.avgPowerHistory.length > 150) state.avgPowerHistory.shift();
+    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "AVG POWER (Watts)", "rgba(255,140,0,0.5)", null);
+
     // Average thrust sign timeline
     const avgThrust = (state.thrustHistory.length > 0) ? (state.thrustHistory.reduce((a,b)=>a+b,0)/state.thrustHistory.length) : 0;
     state.avgThrustHistory.push(avgThrust);
     if (state.avgThrustHistory.length > 150) state.avgThrustHistory.shift();
-    drawSignGraph(ctxThrustSign, state.avgThrustHistory, "AVG THRUST SIGN");
+
+    // Update avg thrust status bar
+    ui.avgThrust.textContent = avgThrust.toFixed(0);
+    const statusEl = document.getElementById('avgThrustStatus');
+    if (avgThrust >= 0) {
+        statusEl.style.backgroundColor = '#c8e6c9';
+        statusEl.style.color = '#1b5e20';
+        statusEl.textContent = 'Avg Thrust: Accelerating — ' + avgThrust.toFixed(0) + ' N';
+    } else {
+        statusEl.style.backgroundColor = '#ffcdd2';
+        statusEl.style.color = '#b71c1c';
+        statusEl.textContent = 'Avg Thrust: Decelerating — ' + avgThrust.toFixed(0) + ' N';
+    }
 }
 
 // --- LISTENERS ---
