@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pump Foil Simulator (Ultimate Edition)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            pointer-events: none;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        #controls {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            max-width: 950px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 110px;
+        }
+
+        label {
+            font-size: 10px;
+            font-weight: bold;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        input[type=range] {
+            height: 4px;
+        }
+
+        /* LEGEND STYLES */
+        .legend-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-left: 15px;
+            border-left: 1px solid #eee;
+            padding-left: 15px;
+        }
+        .legend-title {
+            font-size: 10px;
+            font-weight: bold;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .legend-items { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        input[type=checkbox] { cursor: pointer; }
+        kbd {
+            background-color: #eee;
+            border-radius: 3px;
+            border: 1px solid #b4b4b4;
+            padding: 2px 4px;
+            font-size: 9px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-container">
+        <div class="canvas-wrapper">
+            <canvas id="simCanvas" width="900" height="350"></canvas>
+            <div id="ui-overlay">
+                <strong>Live Telemetry</strong><br>
+                Time: <span id="val-time">0.00</span> s<br>
+                Speed: <span id="val-speed">18.0</span> km/h<br>
+                Inst. Power: <span id="val-watts">0</span> W<br>
+                Avg. Power: <span id="val-avg-watts">0</span> W
+            </div>
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="graphThrust" width="900" height="70"></canvas>
+        </div>
+        <div class="canvas-wrapper">
+            <canvas id="graphPower" width="900" height="70"></canvas>
+        </div>
+
+        <div id="controls">
+            <div class="control-group">
+                <label>Speed: <span id="disp-speed">18.0</span> km/h</label>
+                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="18.0">
+            </div>
+            <div class="control-group">
+                <label>Mass: <span id="disp-mass">80</span> kg</label>
+                <input type="range" id="in-mass" min="40" max="120" step="1" value="80">
+            </div>
+            <div class="control-group">
+                <label>Wing Area: <span id="disp-area">1200</span> cm²</label>
+                <input type="range" id="in-area" min="600" max="2000" step="50" value="1200">
+            </div>
+            <div class="control-group">
+                <label>Freq: <span id="disp-freq">1.5</span> Hz</label>
+                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="1.5">
+            </div>
+            <div class="control-group">
+                <label>Amp: <span id="disp-amp">0.20</span> m</label>
+                <input type="range" id="in-amp" min="0.05" max="0.30" step="0.01" value="0.20">
+            </div>
+            <div class="control-group">
+                <label>Trim: <span id="disp-trim">3.0</span>°</label>
+                <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="3.0">
+            </div>
+            <div class="control-group">
+                <label>Phase Shift: <span id="disp-phase">90</span>°</label>
+                <input type="range" id="in-phase" min="0" max="180" step="5" value="90">
+            </div>
+            <div class="control-group">
+                <label>Scale: <span id="disp-size">0.25</span></label>
+                <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.25">
+            </div>
+            
+            <div class="legend-container">
+                <div class="legend-title">Visibility</div>
+                <div class="legend-items">
+                    <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-net" checked><div class="dot" style="background: green;"></div> Net</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
+                </div>
+                <div style="font-size: 9px; color: #555; margin-top: 5px;">
+                    <kbd>SPACE</kbd> Pause
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * PUMP FOIL SIMULATOR - ULTIMATE EDITION
+ * Features: Speed, Mass, Area, Trim, Phase Shift, Wattage, Graphs, Vectors
+ */
+
+// --- CONFIGURATION ---
+const CONFIG = {
+    mass: 80.0,
+    U: 5.0,             
+    rho: 1000.0,
+    S: 0.12,            
+    Cd0: 0.02,
+    k: 0.05,
+    g: 9.81,
+    visual_size_m: 0.25, 
+    // Scales
+    scale_L: 1.0, scale_D: 5.0, scale_T: 5.0, scale_R: 0.5, scale_N: 1.0,
+    
+    // Adjustable Parameters
+    pitch_trim_deg: 3.0,
+    phase_shift_deg: 90.0
+};
+
+// --- VISIBILITY STATE ---
+const VISIBILITY = { lift: true, drag: true, rider: true, net: true, thrust: true };
+
+// --- STATE ---
+let state = {
+    t: 0,
+    dt: 0.02,
+    paused: false,
+    freq: 1.5,
+    heave_amp: 0.20,
+    pathX: [],
+    pathZ: [],
+    thrustHistory: [], 
+    powerHistory: []
+};
+
+// --- NACA PROFILE ---
+function getNACA00xx(thickness, points) {
+    const coords = [];
+    for (let i = 0; i <= points; i++) {
+        const beta = (i / points) * Math.PI;
+        const x = (1 - Math.cos(beta)) / 2;
+        const yt = 5 * thickness * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * Math.pow(x, 2) + 0.2843 * Math.pow(x, 3) - 0.1015 * Math.pow(x, 4));
+        coords.push({x: x, y: yt});
+    }
+    return coords;
+}
+const foilShape = getNACA00xx(0.15, 40);
+
+// --- DOM ELEMENTS ---
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+const ctxThrust = document.getElementById('graphThrust').getContext('2d');
+const ctxPower = document.getElementById('graphPower').getContext('2d');
+
+const ui = {
+    time: document.getElementById('val-time'),
+    speed: document.getElementById('val-speed'),
+    watts: document.getElementById('val-watts'),
+    avgWatts: document.getElementById('val-avg-watts'),
+    
+    dispFreq: document.getElementById('disp-freq'),
+    dispAmp: document.getElementById('disp-amp'),
+    dispSize: document.getElementById('disp-size'),
+    dispSpeed: document.getElementById('disp-speed'),
+    dispMass: document.getElementById('disp-mass'),
+    dispArea: document.getElementById('disp-area'),
+    dispTrim: document.getElementById('disp-trim'),
+    dispPhase: document.getElementById('disp-phase')
+};
+
+// --- PHYSICS ENGINE ---
+function calculatePhysics(t) {
+    const omega = 2 * Math.PI * state.freq;
+    
+    // 1. Amplitudes & Setup
+    const vz_max = state.heave_amp * omega;
+    const gamma_max = Math.atan2(vz_max, CONFIG.U);
+    const pitch_amp = gamma_max * 0.90; 
+    
+    const pitch_trim = CONFIG.pitch_trim_deg * (Math.PI / 180);
+    const phase_rad = CONFIG.phase_shift_deg * (Math.PI / 180);
+
+    // 2. Motion (Time-based)
+    // Heave: Cosine (Starts at top)
+    const z = state.heave_amp * Math.cos(omega * t);
+    
+    // Heave Derivatives
+    const vz = -state.heave_amp * omega * Math.sin(omega * t);
+    const az = -state.heave_amp * (omega ** 2) * Math.cos(omega * t);
+    
+    // Pitch: Uses Phase Shift relative to Heave
+    // Standard (90 deg) means Pitch = Cos(wt + 90) = -Sin(wt). 
+    // This maintains previous logic while allowing adjustment.
+    const theta = pitch_trim + pitch_amp * Math.cos(omega * t + phase_rad);
+
+    // 3. Angles & Velocities
+    const x = CONFIG.U * t;
+    const vx = CONFIG.U;
+    
+    const gamma = Math.atan2(vz, vx);
+    const alpha = theta - gamma;
+    const v_sq = vx*vx + vz*vz;
+    
+    // 4. Forces
+    const Cl = 2 * Math.PI * alpha;
+    const Cd = CONFIG.Cd0 + CONFIG.k * (Cl * Cl);
+    
+    const L_mag = 0.5 * CONFIG.rho * CONFIG.S * Cl * v_sq;
+    const D_mag = 0.5 * CONFIG.rho * CONFIG.S * Cd * v_sq;
+    
+    const F_rider = CONFIG.mass * (CONFIG.g + az);
+    
+    // 5. Power
+    // Power = F * v. Only counting positive work input.
+    const power = Math.max(0, F_rider * (-vz));
+
+    // 6. Vector Components
+    const Lx = -L_mag * Math.sin(gamma); const Lz = L_mag * Math.cos(gamma);
+    const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
+    const Rx = 0; const Rz = -F_rider;
+    const Nx = Lx + Dx + Rx; const Nz = Lz + Dz + Rz;
+    
+    return {
+        x, z, alpha, gamma, theta, vz,
+        Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz,
+        thrust: -Lx - Dx, 
+        riderForce: F_rider,
+        power: power
+    };
+}
+
+// --- DRAWING ---
+function drawArrow(ctx, startX, startY, u, v, color, scale, user_scale) {
+    let len = Math.sqrt(u*u + v*v) * scale * user_scale;
+    const MAX_LEN_PX = 150;
+    let clamp = 1.0;
+    if (len > MAX_LEN_PX) clamp = MAX_LEN_PX / len;
+    const finalU = u * scale * user_scale * clamp;
+    const finalV = v * scale * user_scale * clamp;
+    const endX = startX + finalU;
+    const endY = startY - finalV; 
+    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, endY);
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
+    const angle = Math.atan2(-finalV, finalU); const headLen = 10;
+    ctx.beginPath(); ctx.moveTo(endX, endY);
+    ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI / 6), endY - headLen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI / 6), endY - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.fillStyle = color; ctx.fill();
+}
+
+function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, maxVal) {
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    
+    ctx.font = "10px sans-serif";
+    ctx.fillStyle = "#888";
+    ctx.fillText(title, 5, 12);
+    
+    const midY = (colorNegative) ? h/2 : h - 5; 
+    ctx.strokeStyle = '#eee';
+    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(w, midY); ctx.stroke();
+    
+    if (data.length < 2) return;
+    
+    const stepX = w / 150;
+    const scaleY = (colorNegative) ? (h/2)/maxVal : (h-20)/maxVal;
+    
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    for (let i = 0; i < data.length; i++) {
+        const val = data[i];
+        const px = i * stepX;
+        const py = midY - (val * scaleY);
+        ctx.lineTo(px, py);
+    }
+    ctx.lineTo((data.length-1)*stepX, midY);
+    ctx.closePath();
+    
+    ctx.save();
+    if (colorNegative) {
+        ctx.save();
+        ctx.clip(); 
+        ctx.fillStyle = colorPositive; 
+        ctx.fillRect(0, 0, w, midY);
+        ctx.fillStyle = colorNegative; 
+        ctx.fillRect(0, midY, w, h/2);
+        ctx.restore();
+    } else {
+        ctx.fillStyle = colorPositive;
+        ctx.fill();
+    }
+    ctx.restore();
+    
+    ctx.strokeStyle = "#666";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+        const val = data[i];
+        const px = i * stepX;
+        const py = midY - (val * scaleY);
+        if (i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+}
+
+
+// --- MAIN LOOP ---
+function render() {
+    const phys = calculatePhysics(state.t);
+    
+    // History
+    state.thrustHistory.push(phys.thrust);
+    if (state.thrustHistory.length > 150) state.thrustHistory.shift();
+    state.powerHistory.push(phys.power);
+    if (state.powerHistory.length > 150) state.powerHistory.shift();
+    
+    const avgP = state.powerHistory.reduce((a, b) => a + b, 0) / state.powerHistory.length;
+    
+    // UI
+    ui.time.textContent = state.t.toFixed(2);
+    ui.speed.textContent = (CONFIG.U * 3.6).toFixed(1);
+    ui.watts.textContent = phys.power.toFixed(0);
+    ui.avgWatts.textContent = avgP.toFixed(0);
+    
+    state.pathX.push(phys.x);
+    state.pathZ.push(phys.z);
+    if (state.pathX.length > 150) { state.pathX.shift(); state.pathZ.shift(); }
+    
+    // Canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const PPU = 100;
+    const camX = phys.x * PPU;
+    const camOffset = canvas.width / 3;
+    
+    ctx.save();
+    ctx.translate(-camX + camOffset, canvas.height / 2);
+    
+    // Environment
+    ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    const startGrid = Math.floor((phys.x - 2)); const endGrid = Math.floor((phys.x + 8));
+    for (let i = startGrid; i <= endGrid; i++) { ctx.moveTo(i * PPU, -500); ctx.lineTo(i * PPU, 500); }
+    ctx.moveTo(-10000, 0); ctx.lineTo(10000, 0); ctx.stroke();
+    
+    // Trail
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2;
+    for(let i=0; i<state.pathX.length; i++){
+        const px = state.pathX[i] * PPU; const pz = -state.pathZ[i] * PPU;
+        if (i===0) ctx.moveTo(px, pz); else ctx.lineTo(px, pz);
+    }
+    ctx.stroke();
+    
+    const foilCX = phys.x * PPU; const foilCY = -phys.z * PPU;
+    
+    // Foil
+    ctx.save(); ctx.translate(foilCX, foilCY); ctx.rotate(-phys.theta); 
+    const chordPx = CONFIG.visual_size_m * PPU;
+    const toLocalX = (nx) => (0.25 - nx) * chordPx; 
+    ctx.beginPath(); ctx.fillStyle = 'black';
+    ctx.moveTo(toLocalX(foilShape[0].x), -foilShape[0].y * chordPx);
+    for (let i = 1; i < foilShape.length; i++) ctx.lineTo(toLocalX(foilShape[i].x), -foilShape[i].y * chordPx);
+    for (let i = foilShape.length - 1; i >= 0; i--) ctx.lineTo(toLocalX(foilShape[i].x), foilShape[i].y * chordPx);
+    ctx.fill(); ctx.restore();
+
+    // Vectors
+    const vecScale = 0.2; 
+    if (VISIBILITY.lift) drawArrow(ctx, foilCX, foilCY, phys.Lx, phys.Lz, 'blue', vecScale, CONFIG.scale_L);
+    if (VISIBILITY.drag) drawArrow(ctx, foilCX, foilCY, phys.Dx, phys.Dz, 'red', vecScale, CONFIG.scale_D);
+    if (VISIBILITY.rider) drawArrow(ctx, foilCX, foilCY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R);
+    if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.Nx, phys.Nz, 'green', vecScale, CONFIG.scale_N);
+    if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
+
+    ctx.restore();
+    
+    // Graphs
+    drawSimpleGraph(ctxThrust, state.thrustHistory, "NET THRUST (N)", "rgba(0,128,0,0.3)", "rgba(255,0,0,0.3)", 300);
+    drawSimpleGraph(ctxPower, state.powerHistory, "RIDER POWER (Watts)", "rgba(255,165,0,0.4)", null, 1500);
+}
+
+// --- LISTENERS ---
+document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(1); });
+document.getElementById('in-amp').addEventListener('input', (e) => { state.heave_amp = parseFloat(e.target.value); ui.dispAmp.textContent = state.heave_amp.toFixed(2); });
+document.getElementById('in-size').addEventListener('input', (e) => { CONFIG.visual_size_m = parseFloat(e.target.value); ui.dispSize.textContent = CONFIG.visual_size_m.toFixed(2); });
+document.getElementById('in-speed').addEventListener('input', (e) => { const kph = parseFloat(e.target.value); CONFIG.U = kph / 3.6; ui.dispSpeed.textContent = kph.toFixed(1); });
+document.getElementById('in-mass').addEventListener('input', (e) => { CONFIG.mass = parseFloat(e.target.value); ui.dispMass.textContent = CONFIG.mass.toFixed(0); });
+document.getElementById('in-area').addEventListener('input', (e) => { const cm2 = parseFloat(e.target.value); CONFIG.S = cm2 / 10000; ui.dispArea.textContent = cm2.toFixed(0); });
+document.getElementById('in-trim').addEventListener('input', (e) => { CONFIG.pitch_trim_deg = parseFloat(e.target.value); ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1); });
+document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.phase_shift_deg = parseFloat(e.target.value); ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0); });
+
+document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
+document.getElementById('chk-drag').addEventListener('change', (e) => VISIBILITY.drag = e.target.checked);
+document.getElementById('chk-rider').addEventListener('change', (e) => VISIBILITY.rider = e.target.checked);
+document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
+document.getElementById('chk-thrust').addEventListener('change', (e) => VISIBILITY.thrust = e.target.checked);
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') state.paused = !state.paused;
+    if (state.paused) {
+        if (e.code === 'ArrowRight') state.t += state.dt;
+        if (e.code === 'ArrowLeft') state.t -= state.dt;
+        render();
+    }
+});
+
+function loop() {
+    if (!state.paused) {
+        state.t += state.dt;
+        if(state.t > 1000) state.t = 0;
+        render();
+    }
+    requestAnimationFrame(loop);
+}
+
+render();
+loop();
+
+</script>
+</body>
+</html>
