@@ -14,13 +14,13 @@
             align-items: center;
             justify-content: center;
             height: 100vh; 
-            overflow: hidden;
+            overflow: auto;
         }
 
         #main-container {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 5px;
         }
 
         .canvas-wrapper {
@@ -61,7 +61,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 8px;
             width: 240px;
             box-sizing: border-box;
         }
@@ -69,7 +69,7 @@
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
             min-width: 110px;
         }
 
@@ -142,7 +142,7 @@
 
     <div id="main-container">
         <div class="canvas-wrapper">
-            <canvas id="simCanvas" width="900" height="350"></canvas>
+            <canvas id="simCanvas" width="900" height="380"></canvas>
             <div id="ui-overlay">
                 <strong>Live Telemetry</strong><br>
                 Time: <span id="val-time">0.00</span> s<br>
@@ -159,43 +159,61 @@
         <div id="dashboard-row">
             <div id="graphs-column">
                 <div class="canvas-wrapper">
-                    <canvas id="graphThrust" width="650" height="140"></canvas>
+                    <canvas id="graphThrust" width="650" height="90"></canvas>
                 </div>
                 <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphPower" width="650" height="140"></canvas>
+                    <canvas id="graphPower" width="650" height="90"></canvas>
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphAvgPower" width="650" height="140"></canvas>
+                    <canvas id="graphAvgPower" width="650" height="90"></canvas>
+                </div>
+                <div style="font-size: 10px; color: #555; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); line-height: 1.4;">
+                    <strong>Drag Coefficient: Cd0 Reference:</strong><br>
+                    <b>0.01 - 0.02 (High-Efficiency):</b><br>
+                    Very thin, high-modulus carbon masts (reduced frontal area).<br>
+                    Thinner wing profiles.<br>
+                    <b>0.02 - 0.025 (Standard Pump Foil):</b><br>
+                    Typical high-quality setups<br>
+                    Standard mast thickness (~15-19mm).<br>
+                    Profiles designed for stall resistance (slightly thicker, ~15%).<br>
+                    <b>0.025 - 0.035 (Beginner / Draggy):</b><br>
+                    Thick aluminum masts.<br>
+                    Bulky fuselages or large stabilizers.<br>
+                    Low-aspect, thick beginner wings.
                 </div>
             </div>
             
             <div id="controls">
             <div class="control-group">
-                <label>Frequency: <span id="disp-freq">1.0</span> Hz</label>
-                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="1.0">
+                <label>Frequency: <span id="disp-freq">0.8</span> Hz</label>
+                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="0.8">
             </div>
             <div class="control-group">
-                <label>Amplitude: <span id="disp-amp">0.20</span> m</label>
-                <input type="range" id="in-amp" min="0.05" max="0.30" step="0.01" value="0.20">
+                <label>Amplitude: <span id="disp-amp">0.22</span> m</label>
+                <input type="range" id="in-amp" min="0.05" max="0.30" step="0.01" value="0.22">
             </div>
             <div class="control-group">
-                <label>Speed: <span id="disp-speed">18.0</span> km/h</label>
-                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="18.0">
+                <label>Speed: <span id="disp-speed">15.0</span> km/h</label>
+                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="15.0">
             </div>
             <div class="control-group">
                 <label>Mass: <span id="disp-mass">80</span> kg</label>
                 <input type="range" id="in-mass" min="40" max="120" step="1" value="80">
             </div>
             <div class="control-group">
-                <label>Wing Area: <span id="disp-area">1200</span> cm²</label>
-                <input type="range" id="in-area" min="600" max="2000" step="50" value="1200">
+                <label>Wing Area: <span id="disp-area">1500</span> cm²</label>
+                <input type="range" id="in-area" min="600" max="2000" step="50" value="1500">
             </div>
             <div class="control-group">
-                <label>Aspect Ratio: <span id="disp-ar">6.0</span></label>
-                <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="6.0">
+                <label>Aspect Ratio: <span id="disp-ar">13.0</span></label>
+                <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.0">
+            </div>
+            <div class="control-group">
+                <label>Drag Coeff (Cd0): <span id="disp-cd0">0.020</span></label>
+                <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.020">
             </div>
             <div class="control-group">
                 <label>Frontwing Pitch Trim: <span id="disp-trim">1.0</span>°</label>
@@ -209,16 +227,22 @@
                 <label>Visualization Scale: <span id="disp-size">0.40</span></label>
                 <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
             </div>
+            <div class="control-group" style="flex-direction: row; align-items: center; gap: 6px; margin-top: 4px;">
+                <input type="checkbox" id="chk-slowmo" style="height: auto;">
+                <label for="chk-slowmo" style="margin: 0; cursor: pointer;">Slow Motion (1/5x)</label>
+            </div>
             
+            <button id="btn-reset" style="margin-top: 5px; padding: 4px; cursor: pointer; font-size: 10px; font-weight: bold; background: #eee; border: 1px solid #ccc; border-radius: 4px;">RESET DEFAULTS</button>
+
             <div class="legend-container">
                 <div class="legend-title">Visibility</div>
                 <div class="legend-items">
-                    <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foilboard</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift Force Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag Force Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider Force Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net Force Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust Force Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foilboard and Rider </label>
                 </div>
                 <div style="font-size: 9px; color: #555; margin-top: 5px;">
                     <kbd>SPACE</kbd> Pause
@@ -235,21 +259,21 @@
 
 // --- CONFIGURATION ---
 const CONFIG = {
-    mass: 80.0,
-    U: 5.0,             
-    rho: 1000.0,
-    S: 0.12,            
-    Cd0: 0.02,
-    k: 0.05,
-    g: 9.81,
-    visual_size_m: 0.4, 
+    mass: 80.0,          // Total mass (Rider + Board) in kg
+    U: 15.0 / 3.6,       // Forward speed in m/s (converted from km/h)
+    rho: 1000.0,         // Water density in kg/m³
+    S: 0.15,             // Wing Area in m² (1500 cm²)
+    Cd0: 0.02,           // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
+    k: 0.05,             // Induced Drag Factor (recalculated based on AR)
+    g: 9.81,             // Gravity (m/s²)
+    visual_size_m: 0.4,  // Visual scale for foil chord length
     // Scales
     scale_L: 0.5, scale_D: 5.0, scale_T: 5.0, scale_R: 0.5, scale_N: 0.5,
-    AR: 6.0,
+    AR: 13.0,            // Aspect Ratio (Span² / Area)
     
     // Adjustable Parameters
-    pitch_trim_deg: 1.0,
-    phase_shift_deg: 90.0
+    pitch_trim_deg: 1.0,    // Base pitch angle in degrees
+    phase_shift_deg: 90.0   // Phase difference between Heave and Pitch
 };
 
 // --- VISIBILITY STATE ---
@@ -258,10 +282,12 @@ const VISIBILITY = { lift: true, drag: true, rider: true, net: false, thrust: tr
 // --- STATE ---
 let state = {
     t: 0,
-    dt: 0.02,
+    dt: 0.01,
+    historyTimer: 0,
     paused: false,
-    freq: 1.0,
-    heave_amp: 0.20,
+    slowMotion: false,
+    freq: 0.8,
+    heave_amp: 0.22,
     pathX: [],
     pathZ: [],
     thrustHistory: [],
@@ -308,6 +334,7 @@ const ui = {
     dispMass: document.getElementById('disp-mass'),
     dispArea: document.getElementById('disp-area'),
     dispAr: document.getElementById('disp-ar'),
+    dispCd0: document.getElementById('disp-cd0'),
     dispTrim: document.getElementById('disp-trim'),
     dispPhase: document.getElementById('disp-phase')
 };
@@ -406,8 +433,8 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
     const topMargin = 18;
     const bottomMargin = 12;
 
-    ctx.font = "12px sans-serif";
-    ctx.fillStyle = "#444";
+    ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    ctx.fillStyle = "#666";
     ctx.fillText(title, leftMargin, 12);
 
     const plotW = w - leftMargin - rightMargin;
@@ -642,18 +669,55 @@ function drawSustainabilityGauge(ctx, avgThrust, maxThrustRef) {
 }
 
 
-// --- MAIN LOOP ---
-function render() {
+// --- UPDATE & RENDER ---
+function updatePhysicsState(dtOverride) {
+    const dt = dtOverride || state.dt;
+    state.t += dt;
+    if(state.t > 1000) state.t = 0;
+
     const phys = calculatePhysics(state.t);
     
-    // History
-    state.thrustHistory.push(phys.thrust);
-    if (state.thrustHistory.length > 150) state.thrustHistory.shift();
-    state.powerHistory.push(phys.power);
-    if (state.powerHistory.length > 150) state.powerHistory.shift();
+    // History (Decoupled from render frame rate)
+    state.historyTimer += dt;
     
-    const avgP = state.powerHistory.reduce((a, b) => a + b, 0) / state.powerHistory.length;
+    while (state.historyTimer >= state.dt) {
+        state.historyTimer -= state.dt;
+        
+        state.thrustHistory.push(phys.thrust);
+        if (state.thrustHistory.length > 300) state.thrustHistory.shift();
+        state.powerHistory.push(phys.power);
+        if (state.powerHistory.length > 300) state.powerHistory.shift();
+        
+        // Avg Power
+        const cyclePeriod = 1.0 / state.freq;
+        const samplesPerCycle = cyclePeriod / state.dt;
+        const windowSize = Math.ceil(samplesPerCycle * 4);
+        const avgPowerWindow = state.powerHistory.slice(Math.max(0, state.powerHistory.length - windowSize));
+        const avgPower = (avgPowerWindow.length > 0) ? (avgPowerWindow.reduce((a,b)=>a+b,0)/avgPowerWindow.length) : 0;
+        state.avgPowerHistory.push(avgPower);
+        if (state.avgPowerHistory.length > 300) state.avgPowerHistory.shift();
+
+        // Avg Thrust
+        const avgThrust = (state.thrustHistory.length > 0) ? (state.thrustHistory.reduce((a,b)=>a+b,0)/state.thrustHistory.length) : 0;
+        state.avgThrustHistory.push(avgThrust);
+        if (state.avgThrustHistory.length > 300) state.avgThrustHistory.shift();
+    }
     
+    // Get current averages for render
+    const avgPower = state.avgPowerHistory.length > 0 ? state.avgPowerHistory[state.avgPowerHistory.length-1] : 0;
+    const avgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length-1] : 0;
+    
+    // Path
+    state.pathX.push(phys.x);
+    state.pathZ.push(phys.z);
+    if (state.pathX.length > 300) { state.pathX.shift(); state.pathZ.shift(); }
+
+    return { phys, avgPower, avgThrust };
+}
+
+function render(data) {
+    const { phys, avgPower, avgThrust } = data;
+
     // UI
     ui.time.textContent = state.t.toFixed(2);
     ui.speed.textContent = (CONFIG.U * 3.6).toFixed(1);
@@ -663,11 +727,7 @@ function render() {
     ui.aoa.textContent = (phys.alpha * 180 / Math.PI).toFixed(1);
 
     ui.watts.textContent = phys.power.toFixed(0);
-    ui.avgWatts.textContent = avgP.toFixed(0);
-    
-    state.pathX.push(phys.x);
-    state.pathZ.push(phys.z);
-    if (state.pathX.length > 150) { state.pathX.shift(); state.pathZ.shift(); }
+    ui.avgWatts.textContent = avgPower.toFixed(0);
     
     // Canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -676,7 +736,7 @@ function render() {
     const camOffset = canvas.width / 3;
     
     ctx.save();
-    ctx.translate(-camX + camOffset, canvas.height / 2);
+    ctx.translate(-camX + camOffset, canvas.height * 0.70);
     
     // Environment
     ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1;
@@ -707,14 +767,18 @@ function render() {
     // Foil Assembly (Rigid Body)
     ctx.save(); ctx.translate(foilCX, foilCY); ctx.rotate(-phys.theta); 
     
+    // Dimensions
+    const mastH = 0.85 * PPU;
+    const mastW = 0.06 * PPU;
+    const fuseLen = 0.9 * PPU;
+    const fuseRad = 0.015 * PPU;
+    const mastX = -0.15 * PPU; 
+    const boardL = 1.4 * PPU;
+    const boardThick = 0.08 * PPU;
+
     if (VISIBILITY.assembly) {
         // 1. Mast & Fuselage & Stabilizer
         ctx.fillStyle = '#444';
-        const mastH = 0.85 * PPU;
-        const mastW = 0.06 * PPU;
-        const fuseLen = 0.9 * PPU;
-        const fuseRad = 0.015 * PPU;
-        const mastX = -0.3 * PPU; 
         
         // Fuselage (extending backwards from wing)
         ctx.fillRect(-fuseLen + 0.1*PPU, -fuseRad, fuseLen, fuseRad*2);
@@ -725,10 +789,65 @@ function render() {
 
         // 2. Board (on top of mast)
         ctx.fillStyle = '#ccc'; ctx.strokeStyle = '#999';
-        const boardL = 1.4 * PPU;
-        const boardThick = 0.08 * PPU;
         ctx.beginPath(); ctx.rect(mastX - boardL/3, -mastH - boardThick, boardL, boardThick);
         ctx.fill(); ctx.stroke();
+    }
+
+    // 3. Stickman Rider
+    if (VISIBILITY.rider && VISIBILITY.assembly) {
+        const fatness = CONFIG.mass / 80.0;
+        const limbWidth = 5 * fatness;
+        const torsoWidth = 12 * fatness * fatness;
+
+        ctx.strokeStyle = '#222'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        const deckY = -mastH - boardThick;
+        const legLen = 0.9 * PPU;
+        const torsoLen = 0.55 * PPU;
+        const headRad = 0.1 * PPU * Math.sqrt(fatness);
+        
+        // Crouch: z high (up) -> crouch=1 (bent). z low (down) -> crouch=0 (straight)
+        const normZ = Math.max(-1, Math.min(1, phys.z / state.heave_amp));
+        const crouch = (normZ + 1) / 2; 
+        
+        const curLegLen = legLen * (1.0 - 0.35 * crouch);
+        
+        // Feet positions (Fixed on board)
+        const footRearX = mastX;
+        const footFrontX = mastX + 0.4 * PPU;
+
+        // Hip stabilized over front foot (World Up)
+        const sinT = Math.sin(phys.theta);
+        const cosT = Math.cos(phys.theta);
+        
+        const hipX = footFrontX + curLegLen * sinT;
+        const hipY = deckY - curLegLen * cosT;
+        
+        const kneeBend = 0.25 * PPU * crouch;
+
+        // Legs
+        ctx.lineWidth = limbWidth;
+        ctx.beginPath(); ctx.moveTo(footRearX, deckY); ctx.quadraticCurveTo(footRearX + (hipX - footRearX)/2 + kneeBend, deckY - curLegLen/2, hipX, hipY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(footFrontX, deckY); ctx.quadraticCurveTo(footFrontX + (hipX - footFrontX)/2 + kneeBend, deckY - curLegLen/2, hipX, hipY); ctx.stroke();
+        
+        // Torso & Head (Upright in World Space)
+        const shoulderX = hipX + torsoLen * sinT;
+        const shoulderY = hipY - torsoLen * cosT;
+
+        ctx.lineWidth = torsoWidth;
+        ctx.beginPath(); ctx.moveTo(hipX, hipY); ctx.lineTo(shoulderX, shoulderY); ctx.stroke();
+        ctx.beginPath(); ctx.fillStyle='#eee'; ctx.lineWidth=2; ctx.arc(shoulderX, shoulderY - headRad, headRad, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        
+        // Arms
+        const armDx = 0.45 * PPU;
+        const armDy = 0.15 * PPU;
+        const rArmX = shoulderX + (armDx * cosT - armDy * sinT);
+        const rArmY = shoulderY + (armDx * sinT + armDy * cosT);
+        const lArmX = shoulderX - (armDx * cosT + armDy * sinT);
+        const lArmY = shoulderY + (-armDx * sinT + armDy * cosT);
+
+        ctx.lineWidth = limbWidth;
+        ctx.beginPath(); ctx.moveTo(shoulderX, shoulderY); ctx.lineTo(rArmX, rArmY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(shoulderX, shoulderY); ctx.lineTo(lArmX, lArmY); ctx.stroke();
     }
 
     // 3. Main Wing (NACA Profile) - Centered at (0,0)
@@ -753,25 +872,7 @@ function render() {
     // Graphs
     drawSimpleGraph(ctxThrust, state.thrustHistory, "NET THRUST (N)", "rgba(0,128,0,0.35)", "rgba(255,0,0,0.28)");
     drawSimpleGraph(ctxPower, state.powerHistory, "RIDER INSTANTANEOUS POWER (Watts)", "rgba(255,165,0,0.4)", null);
-
-    // Compute and track average power over at least 4 pump cycles
-    // Cycle period in seconds = 1/freq
-    const cyclePeriod = 1.0 / state.freq;
-    // Samples per cycle = cyclePeriod / dt
-    const samplesPerCycle = cyclePeriod / state.dt;
-    // Window size = 4 cycles worth of samples
-    const windowSize = Math.ceil(samplesPerCycle * 4);
-    // Get the last windowSize samples (or all if fewer available)
-    const avgPowerWindow = state.powerHistory.slice(Math.max(0, state.powerHistory.length - windowSize));
-    const avgPower = (avgPowerWindow.length > 0) ? (avgPowerWindow.reduce((a,b)=>a+b,0)/avgPowerWindow.length) : 0;
-    state.avgPowerHistory.push(avgPower);
-    if (state.avgPowerHistory.length > 150) state.avgPowerHistory.shift();
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "RIDER AVG POWER (Watts)", "rgba(255,140,0,0.5)", null);
-
-    // Average thrust sign timeline
-    const avgThrust = (state.thrustHistory.length > 0) ? (state.thrustHistory.reduce((a,b)=>a+b,0)/state.thrustHistory.length) : 0;
-    state.avgThrustHistory.push(avgThrust);
-    if (state.avgThrustHistory.length > 150) state.avgThrustHistory.shift();
 
     // Update avg thrust status bar
     ui.avgThrust.textContent = avgThrust.toFixed(0);
@@ -795,8 +896,27 @@ document.getElementById('in-speed').addEventListener('input', (e) => { const kph
 document.getElementById('in-mass').addEventListener('input', (e) => { CONFIG.mass = parseFloat(e.target.value); ui.dispMass.textContent = CONFIG.mass.toFixed(0); });
 document.getElementById('in-area').addEventListener('input', (e) => { const cm2 = parseFloat(e.target.value); CONFIG.S = cm2 / 10000; ui.dispArea.textContent = cm2.toFixed(0); });
 document.getElementById('in-ar').addEventListener('input', (e) => { CONFIG.AR = parseFloat(e.target.value); ui.dispAr.textContent = CONFIG.AR.toFixed(1); });
+document.getElementById('in-cd0').addEventListener('input', (e) => { CONFIG.Cd0 = parseFloat(e.target.value); ui.dispCd0.textContent = CONFIG.Cd0.toFixed(3); });
 document.getElementById('in-trim').addEventListener('input', (e) => { CONFIG.pitch_trim_deg = parseFloat(e.target.value); ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1); });
 document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.phase_shift_deg = parseFloat(e.target.value); ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0); });
+document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+    state.freq = 0.8; document.getElementById('in-freq').value = 0.8; ui.dispFreq.textContent = "0.8";
+    state.heave_amp = 0.22; document.getElementById('in-amp').value = 0.22; ui.dispAmp.textContent = "0.22";
+    CONFIG.U = 15.0 / 3.6; document.getElementById('in-speed').value = 15.0; ui.dispSpeed.textContent = "15.0";
+    CONFIG.mass = 80.0; document.getElementById('in-mass').value = 80; ui.dispMass.textContent = "80";
+    CONFIG.S = 0.15; document.getElementById('in-area').value = 1500; ui.dispArea.textContent = "1500";
+    CONFIG.AR = 13.0; document.getElementById('in-ar').value = 13.0; ui.dispAr.textContent = "13.0";
+    CONFIG.Cd0 = 0.02; document.getElementById('in-cd0').value = 0.02; ui.dispCd0.textContent = "0.020";
+    CONFIG.pitch_trim_deg = 1.0; document.getElementById('in-trim').value = 1.0; ui.dispTrim.textContent = "1.0";
+    CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
+    CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
+    state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
+    
+    // Clear history for clean restart
+    state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = [];
+});
 
 document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
 document.getElementById('chk-drag').addEventListener('change', (e) => VISIBILITY.drag = e.target.checked);
@@ -808,22 +928,33 @@ document.getElementById('chk-assembly').addEventListener('change', (e) => VISIBI
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') state.paused = !state.paused;
     if (state.paused) {
-        if (e.code === 'ArrowRight') state.t += state.dt;
-        if (e.code === 'ArrowLeft') state.t -= state.dt;
-        render();
+        if (e.code === 'ArrowRight') render(updatePhysicsState());
+        if (e.code === 'ArrowLeft') {
+            state.t -= state.dt;
+            render({ 
+                phys: calculatePhysics(state.t), 
+                avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
+                avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0 
+            });
+        }
     }
 });
 
 function loop() {
     if (!state.paused) {
-        state.t += state.dt;
-        if(state.t > 1000) state.t = 0;
-        render();
+        let data;
+        // Normal: 2 steps of 0.01s = 0.02s/frame
+        // SlowMo: 1 step of 0.002s = 0.002s/frame (1/10th speed) or 0.004s (1/5th)
+        const steps = state.slowMotion ? 1 : 2;
+        const dtStep = state.slowMotion ? 0.004 : 0.01;
+        
+        for(let i=0; i<steps; i++) data = updatePhysicsState(dtStep);
+        render(data);
     }
     requestAnimationFrame(loop);
 }
 
-render();
+render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0 });
 loop();
 
 </script>
