@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pump Foil Simulator (Ultimate Edition)</title>
+    <title>Pump Foil Simulator (Angle Telemetry)</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -39,16 +39,19 @@
         #ui-overlay {
             position: absolute;
             top: 20px;
-            left: 20px;
-            background-color: rgba(255, 255, 255, 0.9);
+            right: 20px;
+            left: auto;
+            background-color: rgba(255, 255, 255, 0.95);
             padding: 15px;
             border-radius: 8px;
             border: 1px solid #ddd;
-            pointer-events: none;
+            pointer-events: auto;
             font-family: monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 13px;
+            line-height: 1.6;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            min-width: 200px;
+            z-index: 10;
         }
 
         #controls {
@@ -121,16 +124,23 @@
                 <strong>Live Telemetry</strong><br>
                 Time: <span id="val-time">0.00</span> s<br>
                 Speed: <span id="val-speed">18.0</span> km/h<br>
+                <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
+                Pitch (vs Horizon): <span id="val-pitch">0.0</span>°<br>
+                AoA (vs Water): <span id="val-aoa">0.0</span>°<br>
+                <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Inst. Power: <span id="val-watts">0</span> W<br>
                 Avg. Power: <span id="val-avg-watts">0</span> W
             </div>
         </div>
 
         <div class="canvas-wrapper">
-            <canvas id="graphThrust" width="900" height="70"></canvas>
+            <canvas id="graphThrust" width="900" height="140"></canvas>
         </div>
         <div class="canvas-wrapper">
-            <canvas id="graphPower" width="900" height="70"></canvas>
+            <canvas id="graphPower" width="900" height="140"></canvas>
+        </div>
+        <div class="canvas-wrapper">
+            <canvas id="graphThrustSign" width="900" height="40"></canvas>
         </div>
 
         <div id="controls">
@@ -163,8 +173,8 @@
                 <input type="range" id="in-phase" min="0" max="180" step="5" value="90">
             </div>
             <div class="control-group">
-                <label>Scale: <span id="disp-size">0.25</span></label>
-                <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.25">
+                <label>Scale: <span id="disp-size">1.00</span></label>
+                <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="1.0">
             </div>
             
             <div class="legend-container">
@@ -185,8 +195,7 @@
 
 <script>
 /**
- * PUMP FOIL SIMULATOR - ULTIMATE EDITION
- * Features: Speed, Mass, Area, Trim, Phase Shift, Wattage, Graphs, Vectors
+ * PUMP FOIL SIMULATOR
  */
 
 // --- CONFIGURATION ---
@@ -198,7 +207,7 @@ const CONFIG = {
     Cd0: 0.02,
     k: 0.05,
     g: 9.81,
-    visual_size_m: 0.25, 
+    visual_size_m: 1.0, 
     // Scales
     scale_L: 1.0, scale_D: 5.0, scale_T: 5.0, scale_R: 0.5, scale_N: 1.0,
     
@@ -220,6 +229,7 @@ let state = {
     pathX: [],
     pathZ: [],
     thrustHistory: [], 
+    avgThrustHistory: [],
     powerHistory: []
 };
 
@@ -241,12 +251,17 @@ const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 const ctxThrust = document.getElementById('graphThrust').getContext('2d');
 const ctxPower = document.getElementById('graphPower').getContext('2d');
+const ctxThrustSign = document.getElementById('graphThrustSign').getContext('2d');
 
 const ui = {
     time: document.getElementById('val-time'),
     speed: document.getElementById('val-speed'),
     watts: document.getElementById('val-watts'),
     avgWatts: document.getElementById('val-avg-watts'),
+    
+    // Angle Displays
+    pitch: document.getElementById('val-pitch'),
+    aoa: document.getElementById('val-aoa'),
     
     dispFreq: document.getElementById('disp-freq'),
     dispAmp: document.getElementById('disp-amp'),
@@ -279,8 +294,6 @@ function calculatePhysics(t) {
     const az = -state.heave_amp * (omega ** 2) * Math.cos(omega * t);
     
     // Pitch: Uses Phase Shift relative to Heave
-    // Standard (90 deg) means Pitch = Cos(wt + 90) = -Sin(wt). 
-    // This maintains previous logic while allowing adjustment.
     const theta = pitch_trim + pitch_amp * Math.cos(omega * t + phase_rad);
 
     // 3. Angles & Velocities
@@ -301,24 +314,23 @@ function calculatePhysics(t) {
     const F_rider = CONFIG.mass * (CONFIG.g + az);
     
     // 5. Power
-    // Power = F * v. Only counting positive work input.
     const power = Math.max(0, F_rider * (-vz));
 
     // 6. Vector Components
     const Lx = -L_mag * Math.sin(gamma); const Lz = L_mag * Math.cos(gamma);
     const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
     const Rx = 0; const Rz = -F_rider;
-    const Nx = Lx + Dx + Rx; const Nz = Lz + Dz + Rz;
+    const Nx = Lx + Dx + Rx; const Nz = Lz + Dz + Rz; 
     
     return {
         x, z, alpha, gamma, theta, vz,
         Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz,
-        thrust: -Lx - Dx, 
+        thrust: Lx + Dx, 
         riderForce: F_rider,
         power: power
     };
 }
-
+ 
 // --- DRAWING ---
 function drawArrow(ctx, startX, startY, u, v, color, scale, user_scale) {
     let len = Math.sqrt(u*u + v*v) * scale * user_scale;
@@ -338,60 +350,178 @@ function drawArrow(ctx, startX, startY, u, v, color, scale, user_scale) {
     ctx.fillStyle = color; ctx.fill();
 }
 
-function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, maxVal) {
+function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
     const w = ctx.canvas.width;
     const h = ctx.canvas.height;
     ctx.clearRect(0, 0, w, h);
-    
-    ctx.font = "10px sans-serif";
-    ctx.fillStyle = "#888";
-    ctx.fillText(title, 5, 12);
-    
-    const midY = (colorNegative) ? h/2 : h - 5; 
-    ctx.strokeStyle = '#eee';
-    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(w, midY); ctx.stroke();
-    
-    if (data.length < 2) return;
-    
-    const stepX = w / 150;
-    const scaleY = (colorNegative) ? (h/2)/maxVal : (h-20)/maxVal;
-    
+
+    const leftMargin = 44;
+    const rightMargin = 8;
+    const topMargin = 18;
+    const bottomMargin = 12;
+
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "#444";
+    ctx.fillText(title, leftMargin, 12);
+
+    const plotW = w - leftMargin - rightMargin;
+    const plotH = h - topMargin - bottomMargin;
+
+    // Draw Y axis
+    ctx.strokeStyle = '#ccc';
     ctx.beginPath();
-    ctx.moveTo(0, midY);
+    ctx.moveTo(leftMargin, topMargin);
+    ctx.lineTo(leftMargin, h - bottomMargin);
+    ctx.stroke();
+
+    if (data.length < 2) return;
+
+    // Dynamic scaling: find max magnitude (for signed) or max value (for unsigned)
+    let maxVal;
+    if (colorNegative) {
+        maxVal = Math.max(...data.map(v => Math.abs(v)));
+    } else {
+        maxVal = Math.max(...data);
+    }
+    if (!isFinite(maxVal) || maxVal <= 0) maxVal = 1;
+    // Add a small padding so the line never touches the top
+    maxVal *= 1.08;
+
+    const midY = colorNegative ? (topMargin + plotH / 2) : (topMargin + plotH);
+    const scaleY = colorNegative ? (plotH / 2) / maxVal : (plotH) / maxVal;
+
+    // Draw horizontal zero (or baseline) line
+    ctx.strokeStyle = '#eee';
+    ctx.beginPath(); ctx.moveTo(leftMargin, midY); ctx.lineTo(w - rightMargin, midY); ctx.stroke();
+
+    // Y labels: top, mid (zero if signed), bottom
+    ctx.fillStyle = '#666';
+    ctx.font = '11px sans-serif';
+    if (colorNegative) {
+        ctx.fillText(maxVal.toFixed(0), 6, topMargin + 10);
+        ctx.fillText('0', 8, midY + 4);
+        ctx.fillText((-maxVal).toFixed(0), 6, h - bottomMargin);
+    } else {
+        ctx.fillText(maxVal.toFixed(0), 6, topMargin + 10);
+        ctx.fillText('0', 8, h - bottomMargin);
+    }
+
+    // Plot area and line
+    const stepX = plotW / Math.max(1, data.length - 1);
+
+    // Build points
+    const pts = [];
     for (let i = 0; i < data.length; i++) {
         const val = data[i];
-        const px = i * stepX;
+        const px = leftMargin + i * stepX;
         const py = midY - (val * scaleY);
-        ctx.lineTo(px, py);
+        pts.push({px, py});
     }
-    ctx.lineTo((data.length-1)*stepX, midY);
+
+    // Build polygon path that closes down to the baseline (midY)
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+    }
+    ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
+    ctx.lineTo(leftMargin, midY);
     ctx.closePath();
-    
-    ctx.save();
+
+    // Fill only the area enclosed by the curve and the baseline.
+    // For signed graphs (colorNegative provided) fill positive and negative sides separately
     if (colorNegative) {
+        // Positive area (curve above baseline): intersect polygon with rect above midY
         ctx.save();
-        ctx.clip(); 
-        ctx.fillStyle = colorPositive; 
-        ctx.fillRect(0, 0, w, midY);
-        ctx.fillStyle = colorNegative; 
-        ctx.fillRect(0, midY, w, h/2);
+        // Clip to polygon
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) { const p = pts[i]; if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py); }
+        ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
+        ctx.lineTo(leftMargin, midY);
+        ctx.closePath();
+        ctx.clip();
+        // Intersect with rectangle above midY
+        ctx.beginPath(); ctx.rect(leftMargin, topMargin, plotW, Math.max(0, midY - topMargin)); ctx.clip();
+        ctx.fillStyle = colorPositive || 'rgba(0,0,0,0.15)';
+        ctx.fillRect(leftMargin, topMargin, plotW, Math.max(0, midY - topMargin));
+        ctx.restore();
+
+        // Negative area (curve below baseline): intersect polygon with rect below midY
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) { const p = pts[i]; if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py); }
+        ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
+        ctx.lineTo(leftMargin, midY);
+        ctx.closePath();
+        ctx.clip();
+        ctx.beginPath(); ctx.rect(leftMargin, midY, plotW, Math.max(0, (h - bottomMargin) - midY)); ctx.clip();
+        ctx.fillStyle = colorNegative || 'rgba(255,0,0,0.15)';
+        ctx.fillRect(leftMargin, midY, plotW, Math.max(0, (h - bottomMargin) - midY));
         ctx.restore();
     } else {
-        ctx.fillStyle = colorPositive;
-        ctx.fill();
+        // Single-sided fill: clip to polygon and fill
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) { const p = pts[i]; if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py); }
+        ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
+        ctx.lineTo(leftMargin, midY);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = colorPositive || 'rgba(0,0,0,0.15)';
+        ctx.fillRect(leftMargin, topMargin, plotW, plotH);
+        ctx.restore();
     }
-    ctx.restore();
-    
-    ctx.strokeStyle = "#666";
-    ctx.lineWidth = 1;
+
+    // Stroke the line on top
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    for (let i = 0; i < data.length; i++) {
-        const val = data[i];
-        const px = i * stepX;
-        const py = midY - (val * scaleY);
-        if (i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
     }
     ctx.stroke();
+}
+
+function drawSignGraph(ctx, data, title) {
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const leftMargin = 44;
+    const rightMargin = 8;
+    const topMargin = 6;
+    const bottomMargin = 6;
+
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "#444";
+    ctx.fillText(title, leftMargin, 12);
+
+    const plotW = w - leftMargin - rightMargin;
+    const plotH = h - topMargin - bottomMargin;
+
+    // Draw Y axis (small)
+    ctx.strokeStyle = '#ccc';
+    ctx.beginPath();
+    ctx.moveTo(leftMargin, topMargin);
+    ctx.lineTo(leftMargin, h - bottomMargin);
+    ctx.stroke();
+
+    if (!data || data.length === 0) return;
+
+    const stepX = plotW / Math.max(1, data.length - 1);
+
+    for (let i = 0; i < data.length; i++) {
+        const val = data[i];
+        const px = leftMargin + i * stepX;
+        const wRect = Math.max(1, Math.ceil(stepX));
+        ctx.fillStyle = (val >= 0) ? 'rgba(0,160,0,0.5)' : 'rgba(220,0,0,0.45)';
+        ctx.fillRect(px, topMargin, wRect, plotH);
+    }
+
+    // Draw a thin separator line at mid (zero) for clarity
+    ctx.strokeStyle = '#eee';
+    ctx.beginPath(); ctx.moveTo(leftMargin, topMargin + plotH/2); ctx.lineTo(w - rightMargin, topMargin + plotH/2); ctx.stroke();
 }
 
 
@@ -410,6 +540,11 @@ function render() {
     // UI
     ui.time.textContent = state.t.toFixed(2);
     ui.speed.textContent = (CONFIG.U * 3.6).toFixed(1);
+    
+    // Update New Angle Displays
+    ui.pitch.textContent = (phys.theta * 180 / Math.PI).toFixed(1);
+    ui.aoa.textContent = (phys.alpha * 180 / Math.PI).toFixed(1);
+
     ui.watts.textContent = phys.power.toFixed(0);
     ui.avgWatts.textContent = avgP.toFixed(0);
     
@@ -464,8 +599,14 @@ function render() {
     ctx.restore();
     
     // Graphs
-    drawSimpleGraph(ctxThrust, state.thrustHistory, "NET THRUST (N)", "rgba(0,128,0,0.3)", "rgba(255,0,0,0.3)", 300);
-    drawSimpleGraph(ctxPower, state.powerHistory, "RIDER POWER (Watts)", "rgba(255,165,0,0.4)", null, 1500);
+    drawSimpleGraph(ctxThrust, state.thrustHistory, "NET THRUST (N)", "rgba(0,128,0,0.35)", "rgba(255,0,0,0.28)");
+    drawSimpleGraph(ctxPower, state.powerHistory, "RIDER POWER (Watts)", "rgba(255,165,0,0.4)", null);
+
+    // Average thrust sign timeline
+    const avgThrust = (state.thrustHistory.length > 0) ? (state.thrustHistory.reduce((a,b)=>a+b,0)/state.thrustHistory.length) : 0;
+    state.avgThrustHistory.push(avgThrust);
+    if (state.avgThrustHistory.length > 150) state.avgThrustHistory.shift();
+    drawSignGraph(ctxThrustSign, state.avgThrustHistory, "AVG THRUST SIGN");
 }
 
 // --- LISTENERS ---
