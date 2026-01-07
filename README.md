@@ -25,8 +25,7 @@ Conditions: Set the simulated Cruise Speed.
 
 Visual Enhancements: Toggles for vector visibility, foil assembly rendering, and scaling options.
 
-Technical DetailsTech Stack: Pure HTML5 Canvas & Vanilla JavaScript (ES6). No external dependencies or libraries.
-
+Technical Details Tech Stack: Pure HTML5 Canvas & Vanilla JavaScript (ES6). No external dependencies or libraries.
 
 Physics Model:Kinematics: Sinusoidal motion for Heave ($z$) and Pitch ($\theta$).
 
