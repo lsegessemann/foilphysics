@@ -9,6 +9,11 @@ You can run the simulator directly in your browser here:[Live Demo](https://luci
 
 The simulator provides an interactive playground for riders, engineers, and enthusiasts to experiment with different foil setups (wing area, aspect ratio) and pumping techniques (frequency, amplitude, timing) to see how they affect efficiency and acceleration.
 
+**Simplifications**
+- All forces are modelled on the front wing directly, which is assumed to be rigid
+- Frontwing has a symmetrical profil
+- Rear wing / stabilizer is neglected, steady state pumping motion assumed
+- The stickfigure is only there for your entertainment
 
 Key Features
 
