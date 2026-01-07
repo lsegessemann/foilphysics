@@ -11,6 +11,7 @@ The simulator provides an interactive playground for riders, engineers, and enth
 
 **Simplifications**
 - All forces are modelled on the front wing directly, which is assumed to be rigid
+- Frontwing has a symmetrical profil
 - Rear wing / stabilizer is neglected, steady state pumping motion assumed
 - The stickfigure is only there for your entertainment
 
