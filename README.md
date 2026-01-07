@@ -1,5 +1,9 @@
 # foilphysics
-Interactive Pump Foil SimulatorProject OverviewThis project is a standalone, browser-based physics simulator designed to visualize and understand the mechanics of pump foiling. 
+Interactive Pump Foil Simulator
+
+Project Overview:
+
+This project is a standalone, browser-based physics simulator designed to visualize and understand the mechanics of pump foiling. 
 It models the hydrodynamics of a hydrofoil wing undergoing a pumping motion and calculates the resulting forces, thrust, and rider power requirements in real-time.
 You can run the simulator directly in your browser here:[Live Demo](https://luciensegessemann-ops.github.io/foilphysics/)
 
@@ -7,6 +11,7 @@ The simulator provides an interactive playground for riders, engineers, and enth
 
 
 Key Features
+
 Physics Engine: Custom 2D quasi-steady simulation loop that calculates Lift, Drag, Rider Inertia, and Net Thrust based on user inputs.
 
 Realistic Fluid Dynamics: Includes finite wing corrections for Aspect Ratio, affecting both the Lift Slope and Induced Drag (Drag Polar).
