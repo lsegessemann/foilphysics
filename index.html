@@ -13,7 +13,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            height: 100vh; 
             overflow: hidden;
         }
 
@@ -160,15 +160,15 @@
                 <input type="range" id="in-area" min="600" max="2000" step="50" value="1200">
             </div>
             <div class="control-group">
-                <label>Freq: <span id="disp-freq">1.5</span> Hz</label>
-                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="1.5">
+                <label>Frequency: <span id="disp-freq">1.0</span> Hz</label>
+                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="1.0">
             </div>
             <div class="control-group">
-                <label>Amp: <span id="disp-amp">0.20</span> m</label>
+                <label>Amplitude: <span id="disp-amp">0.20</span> m</label>
                 <input type="range" id="in-amp" min="0.05" max="0.30" step="0.01" value="0.20">
             </div>
             <div class="control-group">
-                <label>Trim: <span id="disp-trim">1.0</span>°</label>
+                <label>Frontwing Pitch Trim: <span id="disp-trim">1.0</span>°</label>
                 <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="1.0">
             </div>
             <div class="control-group">
@@ -176,8 +176,8 @@
                 <input type="range" id="in-phase" min="0" max="180" step="5" value="90">
             </div>
             <div class="control-group">
-                <label>Scale: <span id="disp-size">1.00</span></label>
-                <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="1.0">
+                <label>Scale: <span id="disp-size">0.40</span></label>
+                <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
             </div>
             
             <div class="legend-container">
@@ -188,6 +188,7 @@
                     <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
                     <label class="legend-item"><input type="checkbox" id="chk-net" checked><div class="dot" style="background: green;"></div> Net</label>
                     <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foilboard</label>
                 </div>
                 <div style="font-size: 9px; color: #555; margin-top: 5px;">
                     <kbd>SPACE</kbd> Pause
@@ -210,7 +211,7 @@ const CONFIG = {
     Cd0: 0.02,
     k: 0.05,
     g: 9.81,
-    visual_size_m: 1.0, 
+    visual_size_m: 0.4, 
     // Scales
     scale_L: 1.0, scale_D: 5.0, scale_T: 5.0, scale_R: 0.5, scale_N: 1.0,
     
@@ -220,14 +221,14 @@ const CONFIG = {
 };
 
 // --- VISIBILITY STATE ---
-const VISIBILITY = { lift: true, drag: true, rider: true, net: true, thrust: true };
+const VISIBILITY = { lift: true, drag: true, rider: true, net: true, thrust: true, assembly: true };
 
 // --- STATE ---
 let state = {
     t: 0,
     dt: 0.02,
     paused: false,
-    freq: 1.5,
+    freq: 1.0,
     heave_amp: 0.20,
     pathX: [],
     pathZ: [],
@@ -644,6 +645,14 @@ function render() {
     for (let i = startGrid; i <= endGrid; i++) { ctx.moveTo(i * PPU, -500); ctx.lineTo(i * PPU, 500); }
     ctx.moveTo(-10000, 0); ctx.lineTo(10000, 0); ctx.stroke();
     
+    // Water Surface
+    const surfaceZ = 0.85 / 2; 
+    const surfaceY = -surfaceZ * PPU;
+    ctx.fillStyle = 'rgba(0, 160, 255, 0.1)';
+    ctx.fillRect(camX - 2000, surfaceY, 4000, 1000);
+    ctx.beginPath(); ctx.moveTo(camX - 2000, surfaceY); ctx.lineTo(camX + 2000, surfaceY);
+    ctx.strokeStyle = 'rgba(0, 160, 255, 0.5)'; ctx.lineWidth = 2; ctx.stroke();
+
     // Trail
     ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2;
     for(let i=0; i<state.pathX.length; i++){
@@ -655,7 +664,34 @@ function render() {
     const foilCX = phys.x * PPU; const foilCY = -phys.z * PPU;
     
     // Foil
+    // Foil Assembly (Rigid Body)
     ctx.save(); ctx.translate(foilCX, foilCY); ctx.rotate(-phys.theta); 
+    
+    if (VISIBILITY.assembly) {
+        // 1. Mast & Fuselage & Stabilizer
+        ctx.fillStyle = '#444';
+        const mastH = 0.85 * PPU;
+        const mastW = 0.06 * PPU;
+        const fuseLen = 0.9 * PPU;
+        const fuseRad = 0.015 * PPU;
+        const mastX = -0.3 * PPU; 
+        
+        // Fuselage (extending backwards from wing)
+        ctx.fillRect(-fuseLen + 0.1*PPU, -fuseRad, fuseLen, fuseRad*2);
+        // Stabilizer (at the back)
+        ctx.beginPath(); ctx.ellipse(-fuseLen + 0.15*PPU, 0, 0.12*PPU, 0.015*PPU, 0, 0, Math.PI*2); ctx.fill();
+        // Mast (extending up)
+        ctx.fillRect(mastX - mastW/2, -mastH, mastW, mastH);
+
+        // 2. Board (on top of mast)
+        ctx.fillStyle = '#ccc'; ctx.strokeStyle = '#999';
+        const boardL = 1.4 * PPU;
+        const boardThick = 0.08 * PPU;
+        ctx.beginPath(); ctx.rect(mastX - boardL/3, -mastH - boardThick, boardL, boardThick);
+        ctx.fill(); ctx.stroke();
+    }
+
+    // 3. Main Wing (NACA Profile) - Centered at (0,0)
     const chordPx = CONFIG.visual_size_m * PPU;
     const toLocalX = (nx) => (0.25 - nx) * chordPx; 
     ctx.beginPath(); ctx.fillStyle = 'black';
@@ -726,6 +762,7 @@ document.getElementById('chk-drag').addEventListener('change', (e) => VISIBILITY
 document.getElementById('chk-rider').addEventListener('change', (e) => VISIBILITY.rider = e.target.checked);
 document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
 document.getElementById('chk-thrust').addEventListener('change', (e) => VISIBILITY.thrust = e.target.checked);
+document.getElementById('chk-assembly').addEventListener('change', (e) => VISIBILITY.assembly = e.target.checked);
 
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') state.paused = !state.paused;
