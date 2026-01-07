@@ -31,7 +31,8 @@ Physics Model:Kinematics: Sinusoidal motion for Heave ($z$) and Pitch ($\theta$)
 
 Hydrodynamics: Thin airfoil theory modified for finite Aspect Ratio ($C_L = \frac{2\pi\alpha}{1 + 2/AR}$) and induced drag ($C_D = C_{D0} + kC_L^2$).
 
-Dynamics: Solves for required Rider Force ($F_{rider}$) by balancing Inertial forces against Hydrodynamic Lift ($F_{rider} = F_{hydro} - m(g+a)$).
+Dynamics: Solves for required Rider Force ($F_{rider}$) by balancing Inertial forces against Hydrodynamic Lift ($F_{rider} = F_{hydro} - mg-ma$).
+
 
 File Structure: Single-file index.html containing CSS, HTML layout, and the JS simulation engine.
 
