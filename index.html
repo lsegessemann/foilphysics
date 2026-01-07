@@ -178,10 +178,8 @@
                     <b>0.02 - 0.025 (Standard Pump Foil):</b><br>
                     Typical high-quality setups<br>
                     Standard mast thickness (~15-19mm).<br>
-                    Profiles designed for stall resistance (slightly thicker, ~15%).<br>
                     <b>0.025 - 0.035 (Beginner / Draggy):</b><br>
                     Thick aluminum masts.<br>
-                    Bulky fuselages or large stabilizers.<br>
                     Low-aspect, thick beginner wings.
                 </div>
             </div>
@@ -189,11 +187,11 @@
             <div id="controls">
             <div class="control-group">
                 <label>Frequency: <span id="disp-freq">0.8</span> Hz</label>
-                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="0.8">
+                <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="0.8">
             </div>
             <div class="control-group">
                 <label>Amplitude: <span id="disp-amp">0.22</span> m</label>
-                <input type="range" id="in-amp" min="0.05" max="0.30" step="0.01" value="0.22">
+                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.22">
             </div>
             <div class="control-group">
                 <label>Speed: <span id="disp-speed">15.0</span> km/h</label>
@@ -806,7 +804,7 @@ function render(data) {
         const headRad = 0.1 * PPU * Math.sqrt(fatness);
         
         // Crouch: z high (up) -> crouch=1 (bent). z low (down) -> crouch=0 (straight)
-        const normZ = Math.max(-1, Math.min(1, phys.z / state.heave_amp));
+        const normZ = (state.heave_amp > 0.0001) ? Math.max(-1, Math.min(1, phys.z / state.heave_amp)) : 0;
         const crouch = (normZ + 1) / 2; 
         
         const curLegLen = legLen * (1.0 - 0.35 * crouch);
@@ -889,7 +887,7 @@ function render(data) {
 }
 
 // --- LISTENERS ---
-document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(1); });
+document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(2); });
 document.getElementById('in-amp').addEventListener('input', (e) => { state.heave_amp = parseFloat(e.target.value); ui.dispAmp.textContent = state.heave_amp.toFixed(2); });
 document.getElementById('in-size').addEventListener('input', (e) => { CONFIG.visual_size_m = parseFloat(e.target.value); ui.dispSize.textContent = CONFIG.visual_size_m.toFixed(2); });
 document.getElementById('in-speed').addEventListener('input', (e) => { const kph = parseFloat(e.target.value); CONFIG.U = kph / 3.6; ui.dispSpeed.textContent = kph.toFixed(1); });
