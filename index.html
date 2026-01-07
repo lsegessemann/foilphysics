@@ -60,11 +60,10 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 15px;
-            align-items: center;
-            justify-content: center;
-            max-width: 950px;
+            width: 240px;
+            box-sizing: border-box;
         }
 
         .control-group {
@@ -90,9 +89,9 @@
             display: flex;
             flex-direction: column;
             gap: 5px;
-            margin-left: 15px;
-            border-left: 1px solid #eee;
-            padding-left: 15px;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
         }
         .legend-title {
             font-size: 10px;
@@ -101,7 +100,7 @@
             text-transform: uppercase;
             margin-bottom: 2px;
         }
-        .legend-items { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; }
+        .legend-items { display: flex; flex-direction: column; gap: 6px; font-size: 11px; }
         .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
         input[type=checkbox] { cursor: pointer; }
@@ -112,6 +111,30 @@
             padding: 2px 4px;
             font-size: 9px;
             font-weight: 700;
+        }
+
+        #dashboard-row {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            width: 900px;
+        }
+        #graphs-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+        }
+
+        /* Make graphs fill the available height to align with controls */
+        #graphs-column .canvas-wrapper:not(#avgThrustStatus) {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #graphs-column .canvas-wrapper:not(#avgThrustStatus) canvas {
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -133,20 +156,31 @@
             </div>
         </div>
 
-        <div class="canvas-wrapper">
-            <canvas id="graphThrust" width="900" height="140"></canvas>
-        </div>
-        <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
-            Avg Thrust: Accelerating — <span id="val-avg-thrust">0</span> N
-        </div>
-        <div class="canvas-wrapper">
-            <canvas id="graphPower" width="900" height="140"></canvas>
-        </div>
-        <div class="canvas-wrapper">
-            <canvas id="graphAvgPower" width="900" height="140"></canvas>
-        </div>
-
-        <div id="controls">
+        <div id="dashboard-row">
+            <div id="graphs-column">
+                <div class="canvas-wrapper">
+                    <canvas id="graphThrust" width="650" height="140"></canvas>
+                </div>
+                <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
+                    Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="graphPower" width="650" height="140"></canvas>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="graphAvgPower" width="650" height="140"></canvas>
+                </div>
+            </div>
+            
+            <div id="controls">
+            <div class="control-group">
+                <label>Frequency: <span id="disp-freq">1.0</span> Hz</label>
+                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label>Amplitude: <span id="disp-amp">0.20</span> m</label>
+                <input type="range" id="in-amp" min="0.05" max="0.30" step="0.01" value="0.20">
+            </div>
             <div class="control-group">
                 <label>Speed: <span id="disp-speed">18.0</span> km/h</label>
                 <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="18.0">
@@ -160,12 +194,8 @@
                 <input type="range" id="in-area" min="600" max="2000" step="50" value="1200">
             </div>
             <div class="control-group">
-                <label>Frequency: <span id="disp-freq">1.0</span> Hz</label>
-                <input type="range" id="in-freq" min="0.5" max="2.5" step="0.1" value="1.0">
-            </div>
-            <div class="control-group">
-                <label>Amplitude: <span id="disp-amp">0.20</span> m</label>
-                <input type="range" id="in-amp" min="0.05" max="0.30" step="0.01" value="0.20">
+                <label>Aspect Ratio: <span id="disp-ar">6.0</span></label>
+                <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="6.0">
             </div>
             <div class="control-group">
                 <label>Frontwing Pitch Trim: <span id="disp-trim">1.0</span>°</label>
@@ -176,7 +206,7 @@
                 <input type="range" id="in-phase" min="0" max="180" step="5" value="90">
             </div>
             <div class="control-group">
-                <label>Scale: <span id="disp-size">0.40</span></label>
+                <label>Visualization Scale: <span id="disp-size">0.40</span></label>
                 <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
             </div>
             
@@ -186,7 +216,7 @@
                     <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift</label>
                     <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
                     <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-net" checked><div class="dot" style="background: green;"></div> Net</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net</label>
                     <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
                     <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foilboard</label>
                 </div>
@@ -194,6 +224,7 @@
                     <kbd>SPACE</kbd> Pause
                 </div>
             </div>
+        </div>
         </div>
     </div>
 
@@ -213,7 +244,8 @@ const CONFIG = {
     g: 9.81,
     visual_size_m: 0.4, 
     // Scales
-    scale_L: 1.0, scale_D: 5.0, scale_T: 5.0, scale_R: 0.5, scale_N: 1.0,
+    scale_L: 0.5, scale_D: 5.0, scale_T: 5.0, scale_R: 0.5, scale_N: 0.5,
+    AR: 6.0,
     
     // Adjustable Parameters
     pitch_trim_deg: 1.0,
@@ -221,7 +253,7 @@ const CONFIG = {
 };
 
 // --- VISIBILITY STATE ---
-const VISIBILITY = { lift: true, drag: true, rider: true, net: true, thrust: true, assembly: true };
+const VISIBILITY = { lift: true, drag: true, rider: true, net: false, thrust: true, assembly: true };
 
 // --- STATE ---
 let state = {
@@ -275,6 +307,7 @@ const ui = {
     dispSpeed: document.getElementById('disp-speed'),
     dispMass: document.getElementById('disp-mass'),
     dispArea: document.getElementById('disp-area'),
+    dispAr: document.getElementById('disp-ar'),
     dispTrim: document.getElementById('disp-trim'),
     dispPhase: document.getElementById('disp-phase')
 };
@@ -311,28 +344,35 @@ function calculatePhysics(t) {
     const v_sq = vx*vx + vz*vz;
     
     // 4. Forces
-    const Cl = 2 * Math.PI * alpha;
-    const Cd = CONFIG.Cd0 + CONFIG.k * (Cl * Cl);
+    // Finite wing correction: Cl = 2*pi*alpha / (1 + 2/AR)
+    const Cl = (2 * Math.PI * alpha) / (1 + 2 / CONFIG.AR);
+    // Induced drag factor k approx 1 / (pi * AR)
+    const k = 1 / (Math.PI * CONFIG.AR);
+    const Cd = CONFIG.Cd0 + k * (Cl * Cl);
     
     const L_mag = 0.5 * CONFIG.rho * CONFIG.S * Cl * v_sq;
     const D_mag = 0.5 * CONFIG.rho * CONFIG.S * Cd * v_sq;
     
-    const F_rider = CONFIG.mass * (CONFIG.g + az);
-    
-    // 5. Power
-    const power = Math.max(0, F_rider * (-vz));
-
-    // 6. Vector Components
     const Lx = -L_mag * Math.sin(gamma); const Lz = L_mag * Math.cos(gamma);
     const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
-    const Rx = 0; const Rz = -F_rider;
-    const Nx = Lx + Dx + Rx; const Nz = Lz + Dz + Rz; 
+    
+    // 5. Rider Force & Power
+    // F_rider = F_Inertia - F_Hydro
+    const F_inertia = CONFIG.mass * (CONFIG.g + az);
+    const F_hydro_z = Lz + Dz;
+    const F_rider_z = F_hydro_z - F_inertia;
+    
+    const power = Math.max(0, F_rider_z * (-vz));
+
+    // 6. Vector Components
+    const Rx = 0; const Rz = F_rider_z;
+    const Nx = Lx + Dx + Rx; const Nz = Lz + Dz - Rz; 
     
     return {
         x, z, alpha, gamma, theta, vz,
         Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz,
         thrust: Lx + Dx, 
-        riderForce: F_rider,
+        riderForce: F_rider_z,
         power: power
     };
 }
@@ -739,11 +779,11 @@ function render() {
     if (avgThrust >= 0) {
         statusEl.style.backgroundColor = '#c8e6c9';
         statusEl.style.color = '#1b5e20';
-        statusEl.textContent = 'Avg Thrust: Accelerating — ' + avgThrust.toFixed(0) + ' N';
+        statusEl.textContent = 'Avg Thrust: Accelerating : ' + avgThrust.toFixed(0) + ' N';
     } else {
         statusEl.style.backgroundColor = '#ffcdd2';
         statusEl.style.color = '#b71c1c';
-        statusEl.textContent = 'Avg Thrust: Decelerating — ' + avgThrust.toFixed(0) + ' N';
+        statusEl.textContent = 'Avg Thrust: Decelerating : ' + avgThrust.toFixed(0) + ' N';
     }
 }
 
@@ -754,6 +794,7 @@ document.getElementById('in-size').addEventListener('input', (e) => { CONFIG.vis
 document.getElementById('in-speed').addEventListener('input', (e) => { const kph = parseFloat(e.target.value); CONFIG.U = kph / 3.6; ui.dispSpeed.textContent = kph.toFixed(1); });
 document.getElementById('in-mass').addEventListener('input', (e) => { CONFIG.mass = parseFloat(e.target.value); ui.dispMass.textContent = CONFIG.mass.toFixed(0); });
 document.getElementById('in-area').addEventListener('input', (e) => { const cm2 = parseFloat(e.target.value); CONFIG.S = cm2 / 10000; ui.dispArea.textContent = cm2.toFixed(0); });
+document.getElementById('in-ar').addEventListener('input', (e) => { CONFIG.AR = parseFloat(e.target.value); ui.dispAr.textContent = CONFIG.AR.toFixed(1); });
 document.getElementById('in-trim').addEventListener('input', (e) => { CONFIG.pitch_trim_deg = parseFloat(e.target.value); ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1); });
 document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.phase_shift_deg = parseFloat(e.target.value); ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0); });
 
