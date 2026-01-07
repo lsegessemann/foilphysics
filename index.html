@@ -752,7 +752,7 @@ function render() {
     
     // Graphs
     drawSimpleGraph(ctxThrust, state.thrustHistory, "NET THRUST (N)", "rgba(0,128,0,0.35)", "rgba(255,0,0,0.28)");
-    drawSimpleGraph(ctxPower, state.powerHistory, "RIDER POWER (Watts)", "rgba(255,165,0,0.4)", null);
+    drawSimpleGraph(ctxPower, state.powerHistory, "RIDER INSTANTANEOUS POWER (Watts)", "rgba(255,165,0,0.4)", null);
 
     // Compute and track average power over at least 4 pump cycles
     // Cycle period in seconds = 1/freq
@@ -766,7 +766,7 @@ function render() {
     const avgPower = (avgPowerWindow.length > 0) ? (avgPowerWindow.reduce((a,b)=>a+b,0)/avgPowerWindow.length) : 0;
     state.avgPowerHistory.push(avgPower);
     if (state.avgPowerHistory.length > 150) state.avgPowerHistory.shift();
-    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "AVG POWER (Watts)", "rgba(255,140,0,0.5)", null);
+    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "RIDER AVG POWER (Watts)", "rgba(255,140,0,0.5)", null);
 
     // Average thrust sign timeline
     const avgThrust = (state.thrustHistory.length > 0) ? (state.thrustHistory.reduce((a,b)=>a+b,0)/state.thrustHistory.length) : 0;
