@@ -695,47 +695,64 @@ function drawSustainabilityGauge(ctx, avgThrust, maxThrustRef) {
 // --- UPDATE & RENDER ---
 function updatePhysicsState(dtOverride) {
     const dt = dtOverride || state.dt;
-    state.t += dt;
-    if(state.t > 1000) state.t = 0;
-
-    const phys = calculatePhysics(state.t);
     
-    // History (Decoupled from render frame rate)
+    // Increment the history timer
     state.historyTimer += dt;
+
+    let phys = calculatePhysics(state.t); // Initial calculation for rendering
     
+    // Process history updates in fixed steps
     while (state.historyTimer >= state.dt) {
+        // Decrement timer by one simulation step
         state.historyTimer -= state.dt;
         
+        // Increment simulation time and recalculate physics for the history
+        state.t += state.dt;
+        if(state.t > 1000) state.t = 0; // Reset time to avoid precision issues
+        
+        phys = calculatePhysics(state.t); // Recalculate for the new time
+        
+        // --- Update History Arrays ---
         state.thrustHistory.push(phys.thrust);
         if (state.thrustHistory.length > 300) state.thrustHistory.shift();
+        
         state.powerHistory.push(phys.power);
         if (state.powerHistory.length > 300) state.powerHistory.shift();
         
-        // Avg Power
+        // Calculate and store average power (over a 4-cycle window)
         const cyclePeriod = 1.0 / state.freq;
-        const samplesPerCycle = cyclePeriod / state.dt;
+        const samplesPerCycle = Math.max(1, cyclePeriod / state.dt);
         const windowSize = Math.ceil(samplesPerCycle * 4);
-        const avgPowerWindow = state.powerHistory.slice(Math.max(0, state.powerHistory.length - windowSize));
-        const avgPower = (avgPowerWindow.length > 0) ? (avgPowerWindow.reduce((a,b)=>a+b,0)/avgPowerWindow.length) : 0;
+        
+        let powerSum = 0;
+        const start = Math.max(0, state.powerHistory.length - windowSize);
+        for (let i = state.powerHistory.length - 1; i >= start; i--) {
+            powerSum += state.powerHistory[i];
+        }
+        const avgPower = (state.powerHistory.length > start) ? powerSum / (state.powerHistory.length - start) : 0;
+
         state.avgPowerHistory.push(avgPower);
         if (state.avgPowerHistory.length > 300) state.avgPowerHistory.shift();
 
-        // Avg Thrust
-        const avgThrust = (state.thrustHistory.length > 0) ? (state.thrustHistory.reduce((a,b)=>a+b,0)/state.thrustHistory.length) : 0;
+        // Calculate and store average thrust (over the full history)
+        const avgThrust = state.thrustHistory.reduce((a, b) => a + b, 0) / state.thrustHistory.length;
         state.avgThrustHistory.push(avgThrust);
         if (state.avgThrustHistory.length > 300) state.avgThrustHistory.shift();
     }
     
-    // Get current averages for render
-    const avgPower = state.avgPowerHistory.length > 0 ? state.avgPowerHistory[state.avgPowerHistory.length-1] : 0;
-    const avgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length-1] : 0;
+    // Get the most recent averages for the UI display
+    const currentAvgPower = state.avgPowerHistory.length > 0 ? state.avgPowerHistory[state.avgPowerHistory.length - 1] : 0;
+    const currentAvgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length - 1] : 0;
     
-    // Path
+    // Update the visual path of the foil
     state.pathX.push(phys.x);
     state.pathZ.push(phys.z);
-    if (state.pathX.length > 300) { state.pathX.shift(); state.pathZ.shift(); }
+    if (state.pathX.length > 300) {
+        state.pathX.shift();
+        state.pathZ.shift();
+    }
 
-    return { phys, avgPower, avgThrust };
+    return { phys, avgPower: currentAvgPower, avgThrust: currentAvgThrust };
 }
 
 function render(data) {
