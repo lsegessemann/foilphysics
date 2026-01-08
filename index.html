@@ -256,8 +256,8 @@
             </div>
             <div class="control-group">
             <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
-                <label>Wing Area: <span id="disp-area">1500</span> cm²</label>
-                <input type="range" id="in-area" min="600" max="2000" step="50" value="1500">
+                <label>Wing Area: <span id="disp-area">1250</span> cm²</label>
+                <input type="range" id="in-area" min="600" max="2000" step="50" value="1250">
             </div>
             <div class="control-group">
             <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
@@ -271,8 +271,8 @@
             </div>
             <div class="control-group">
             <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
-                <label>Frontwing Pitch Trim: <span id="disp-trim">1.0</span>°</label>
-                <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="1.0">
+                <label>Frontwing Pitch Trim: <span id="disp-trim">0.0</span>°</label>
+                <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="0.0">
             </div>
             <div class="control-group">
             <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
@@ -289,7 +289,10 @@
                 <label for="chk-slowmo" style="margin: 0; cursor: pointer;">Slow Motion (1/5x)</label>
             </div>
             
-            <button id="btn-reset" style="margin-top: 5px; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">RESET DEFAULTS</button>
+            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                <button id="btn-reset" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">RESET</button>
+                <button id="btn-replay" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">REPLAY</button>
+            </div>
 
             <div class="legend-container">
                 <div class="legend-title">Visibility</div>
@@ -319,7 +322,7 @@ const CONFIG = {
     mass: 80.0,          // Total mass (Rider + Board) in kg
     U: 15.0 / 3.6,       // Forward speed in m/s (converted from km/h)
     rho: 1000.0,         // Water density in kg/m³
-    S: 0.15,             // Wing Area in m² (1500 cm²)
+    S: 0.125,            // Wing Area in m² (1250 cm²)
     Cd0: 0.02,           // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
     k: 0.05,             // Induced Drag Factor (recalculated based on AR)
     g: 9.81,             // Gravity (m/s²)
@@ -329,7 +332,7 @@ const CONFIG = {
     AR: 13.0,            // Aspect Ratio (Span² / Area)
     
     // Adjustable Parameters
-    pitch_trim_deg: 1.0,    // Base pitch angle in degrees
+    pitch_trim_deg: 0.0,    // Base pitch angle in degrees
     phase_shift_deg: 90.0   // Phase difference between Heave and Pitch
 };
 
@@ -442,22 +445,35 @@ function calculatePhysics(t) {
     const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
     
     // 5. Rider Force & Power
-    // F_rider = F_Inertia - F_Hydro
+    // F_rider_action = F_Inertia - F_Hydro (Force rider exerts on board)
     const F_inertia = CONFIG.mass * (CONFIG.g + az);
     const F_hydro_z = Lz + Dz;
-    const F_rider_z = F_hydro_z - F_inertia;
+    // The force the rider exerts on the board is purely inertial (supporting their own weight + acceleration)
+    // This force is always downwards (positive magnitude in our calculation)
+    const F_rider_action = F_inertia;
     
-    const power = Math.max(0, F_rider_z * (-vz));
+    // Power = Force * Velocity (Force is F_rider_action, Velocity is vz)
+    // F_rider_action > 0 means Rider is pushing DOWN.
+    // vz < 0 means Board is moving DOWN.
+    // Power is generated when pushing down while moving down.
+    let power = F_rider_action * (-vz);
+    power = Math.max(0, power);
 
     // 6. Vector Components
-    const Rx = 0; const Rz = F_rider_z;
-    const Nx = Lx + Dx + Rx; const Nz = Lz + Dz - Rz; 
+    const Rx = 0; 
+    // Rz is the visual vector component. F_rider_action is magnitude of push.
+    // We want a Down arrow, so Rz should be negative.
+    const Rz = -F_rider_action; 
+    
+    // Net Force = Mass * Acceleration
+    const Nx = CONFIG.mass * 0; 
+    const Nz = CONFIG.mass * az; 
     
     return {
-        x, z, alpha, gamma, theta, vz,
+        x, z, alpha, gamma, theta, vz, az,
         Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz,
         thrust: Lx + Dx, 
-        riderForce: F_rider_z,
+        riderForce: F_rider_action,
         power: power
     };
 }
@@ -759,8 +775,6 @@ function updatePhysicsState(dtOverride) {
     // Increment the history timer
     state.historyTimer += dt;
 
-    let phys = calculatePhysics(state.t); // Initial calculation for rendering
-    
     // Process history updates in fixed steps
     while (state.historyTimer >= state.dt) {
         // Decrement timer by one simulation step
@@ -770,7 +784,7 @@ function updatePhysicsState(dtOverride) {
         state.t += state.dt;
         if(state.t > 1000) state.t = 0; // Reset time to avoid precision issues
         
-        phys = calculatePhysics(state.t); // Recalculate for the new time
+        const phys = calculatePhysics(state.t); // Recalculate for the new time
         
         // --- Update History Arrays ---
         state.thrustHistory.push(phys.thrust);
@@ -798,21 +812,24 @@ function updatePhysicsState(dtOverride) {
         const avgThrust = state.thrustHistory.reduce((a, b) => a + b, 0) / state.thrustHistory.length;
         state.avgThrustHistory.push(avgThrust);
         if (state.avgThrustHistory.length > 300) state.avgThrustHistory.shift();
+
+        // Update the visual path of the foil (synced with physics steps)
+        state.pathX.push(phys.x);
+        state.pathZ.push(phys.z);
+        if (state.pathX.length > 300) {
+            state.pathX.shift();
+            state.pathZ.shift();
+        }
     }
     
     // Get the most recent averages for the UI display
     const currentAvgPower = state.avgPowerHistory.length > 0 ? state.avgPowerHistory[state.avgPowerHistory.length - 1] : 0;
     const currentAvgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length - 1] : 0;
-    
-    // Update the visual path of the foil
-    state.pathX.push(phys.x);
-    state.pathZ.push(phys.z);
-    if (state.pathX.length > 300) {
-        state.pathX.shift();
-        state.pathZ.shift();
-    }
 
-    return { phys, avgPower: currentAvgPower, avgThrust: currentAvgThrust };
+    // Calculate smooth physics for rendering (interpolate time using the remainder)
+    const smoothPhys = calculatePhysics(state.t + state.historyTimer);
+
+    return { phys: smoothPhys, avgPower: currentAvgPower, avgThrust: currentAvgThrust };
 }
 
 function render(data) {
@@ -859,6 +876,10 @@ function render(data) {
         const px = state.pathX[i] * PPU; const pz = -state.pathZ[i] * PPU;
         if (i===0) ctx.moveTo(px, pz); else ctx.lineTo(px, pz);
     }
+    // Connect trail to current foil position to close the gap
+    if (state.pathX.length > 0) {
+        ctx.lineTo(phys.x * PPU, -phys.z * PPU);
+    }
     ctx.stroke();
     
     const foilCX = phys.x * PPU; const foilCY = -phys.z * PPU;
@@ -899,7 +920,12 @@ function render(data) {
         const limbWidth = 5 * fatness;
         const torsoWidth = 12 * fatness * fatness;
 
-        ctx.strokeStyle = '#222'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        // Color change for Power Phase
+        // Light up when pushing down (Rz < 0) and accelerating downwards (az < 0)
+        const isPowerPhase = (phys.Rz < 0 && phys.az < 0);
+        const riderColor = isPowerPhase ? '#f97316' : '#222'; // Orange-500 if powered
+
+        ctx.strokeStyle = riderColor; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
         const deckY = -mastH - boardThick;
         const legLen = 0.9 * PPU;
         const torsoLen = 0.55 * PPU;
@@ -963,7 +989,12 @@ function render(data) {
     const vecScale = 0.2; 
     if (VISIBILITY.lift) drawArrow(ctx, foilCX, foilCY, phys.Lx, phys.Lz, 'blue', vecScale, CONFIG.scale_L);
     if (VISIBILITY.drag) drawArrow(ctx, foilCX, foilCY, phys.Dx, phys.Dz, 'red', vecScale, CONFIG.scale_D);
-    if (VISIBILITY.rider) drawArrow(ctx, foilCX, foilCY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R);
+    if (VISIBILITY.rider) {
+        // Only draw if there is significant force
+        if (Math.abs(phys.Rz) > 1) {
+            drawArrow(ctx, foilCX, foilCY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R);
+        }
+    }
     if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.Nx, phys.Nz, 'green', vecScale, CONFIG.scale_N);
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
 
@@ -971,7 +1002,7 @@ function render(data) {
     
     // Graphs
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
-    drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", null);
+    drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(156, 163, 175, 0.5)");
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Avg Power (W)", "rgba(249, 115, 22, 0.5)", null);
 
     // Update avg thrust status bar
@@ -1006,16 +1037,29 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     state.heave_amp = 0.22; document.getElementById('in-amp').value = 0.22; ui.dispAmp.textContent = "0.22";
     CONFIG.U = 15.0 / 3.6; document.getElementById('in-speed').value = 15.0; ui.dispSpeed.textContent = "15.0";
     CONFIG.mass = 80.0; document.getElementById('in-mass').value = 80; ui.dispMass.textContent = "80";
-    CONFIG.S = 0.15; document.getElementById('in-area').value = 1500; ui.dispArea.textContent = "1500";
+    CONFIG.S = 0.125; document.getElementById('in-area').value = 1250; ui.dispArea.textContent = "1250";
     CONFIG.AR = 13.0; document.getElementById('in-ar').value = 13.0; ui.dispAr.textContent = "13.0";
     CONFIG.Cd0 = 0.02; document.getElementById('in-cd0').value = 0.02; ui.dispCd0.textContent = "0.020";
-    CONFIG.pitch_trim_deg = 1.0; document.getElementById('in-trim').value = 1.0; ui.dispTrim.textContent = "1.0";
+    CONFIG.pitch_trim_deg = 0.0; document.getElementById('in-trim').value = 0.0; ui.dispTrim.textContent = "0.0";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     
     // Clear history for clean restart
     state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = [];
+});
+
+document.getElementById('btn-replay').addEventListener('click', () => {
+    state.t = 0;
+    state.historyTimer = 0;
+    state.thrustHistory = [];
+    state.powerHistory = [];
+    state.avgPowerHistory = [];
+    state.avgThrustHistory = [];
+    state.pathX = [];
+    state.pathZ = [];
+    state.paused = false;
+    render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0 });
 });
 
 document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
@@ -1030,26 +1074,41 @@ window.addEventListener('keydown', (e) => {
     if (state.paused) {
         if (e.code === 'ArrowRight') render(updatePhysicsState());
         if (e.code === 'ArrowLeft') {
-            state.t -= state.dt;
-            render({ 
-                phys: calculatePhysics(state.t), 
-                avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
-                avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0 
-            });
+            if (state.thrustHistory.length > 0) {
+                state.thrustHistory.pop();
+                state.powerHistory.pop();
+                state.avgPowerHistory.pop();
+                state.avgThrustHistory.pop();
+                state.pathX.pop();
+                state.pathZ.pop();
+
+                state.t -= state.dt;
+                state.historyTimer = 0;
+
+                render({ 
+                    phys: calculatePhysics(state.t), 
+                    avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
+                    avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0 
+                });
+            }
         }
     }
 });
 
-function loop() {
+let lastTime = 0;
+function loop(timestamp) {
+    if (!timestamp) {
+        requestAnimationFrame(loop);
+        return;
+    }
+    if (!lastTime) lastTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
     if (!state.paused) {
-        let data;
-        // Normal: 2 steps of 0.01s = 0.02s/frame
-        // SlowMo: 1 step of 0.002s = 0.002s/frame (1/10th speed) or 0.004s (1/5th)
-        const steps = state.slowMotion ? 1 : 2;
-        const dtStep = state.slowMotion ? 0.004 : 0.01;
-        
-        for(let i=0; i<steps; i++) data = updatePhysicsState(dtStep);
-        render(data);
+        const safeDt = Math.min(dt, 0.1);
+        const simDt = state.slowMotion ? safeDt * 0.2 : safeDt;
+        render(updatePhysicsState(simDt));
     }
     requestAnimationFrame(loop);
 }
