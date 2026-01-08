@@ -8,6 +8,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f0f0f0;
+            background-color: #f4f4f5;
             margin: 0;
             display: flex;
             flex-direction: column;
@@ -32,6 +33,9 @@
             background-color: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.05);
             overflow: hidden;
         }
 
@@ -56,6 +60,7 @@
             font-size: 13px;
             line-height: 1.6;
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             min-width: 200px;
             z-index: 10;
         }
@@ -65,6 +70,9 @@
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -88,6 +96,34 @@
 
         input[type=range] {
             height: 4px;
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin: 6px 0;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
         }
 
         /* LEGEND STYLES */
@@ -195,58 +231,56 @@
                 <div class="canvas-wrapper">
                     <canvas id="graphAvgPower" width="650" height="90"></canvas>
                 </div>
-                <div style="font-size: 10px; color: #555; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); line-height: 1.4;">
-                    <strong>Drag Coefficient: Cd0 Reference:</strong><br>
-                    <b>0.01 - 0.02 (High-Efficiency):</b><br>
-                    Very thin, high-modulus carbon masts (reduced frontal area).<br>
-                    Thinner wing profiles.<br>
-                    <b>0.02 - 0.025 (Standard Pump Foil):</b><br>
-                    Typical high-quality setups<br>
-                    Standard mast thickness (~15-19mm).<br>
-                    <b>0.025 - 0.035 (Beginner / Draggy):</b><br>
-                    Thick aluminum masts.<br>
-                    Low-aspect, thick beginner wings.
-                </div>
             </div>
             
             <div id="controls">
             <div class="control-group">
+            <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
                 <label>Frequency: <span id="disp-freq">0.8</span> Hz</label>
-                <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="0.8">
+                <input type="range" id="in-freq" min="0.01" max="2.0" step="0.01" value="0.8">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Vertical range of motion for the foil path.">
                 <label>Amplitude: <span id="disp-amp">0.22</span> m</label>
                 <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.22">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Forward velocity of the rider.">
                 <label>Speed: <span id="disp-speed">15.0</span> km/h</label>
                 <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="15.0">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Total weight of rider plus gear.">
                 <label>Mass: <span id="disp-mass">80</span> kg</label>
                 <input type="range" id="in-mass" min="40" max="120" step="1" value="80">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
                 <label>Wing Area: <span id="disp-area">1500</span> cm²</label>
                 <input type="range" id="in-area" min="600" max="2000" step="50" value="1500">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
                 <label>Aspect Ratio: <span id="disp-ar">13.0</span></label>
                 <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.0">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
                 <label>Drag Coeff (Cd0): <span id="disp-cd0">0.020</span></label>
                 <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.020">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
                 <label>Frontwing Pitch Trim: <span id="disp-trim">1.0</span>°</label>
                 <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="1.0">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
                 <label>Phase Shift: <span id="disp-phase">90</span>°</label>
                 <input type="range" id="in-phase" min="0" max="180" step="5" value="90">
             </div>
             <div class="control-group">
+            <div class="control-group" title="Zoom level for the foil visualization.">
                 <label>Visualization Scale: <span id="disp-size">0.40</span></label>
                 <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
             </div>
@@ -255,7 +289,7 @@
                 <label for="chk-slowmo" style="margin: 0; cursor: pointer;">Slow Motion (1/5x)</label>
             </div>
             
-            <button id="btn-reset" style="margin-top: 5px; padding: 4px; cursor: pointer; font-size: 10px; font-weight: bold; background: #eee; border: 1px solid #ccc; border-radius: 4px;">RESET DEFAULTS</button>
+            <button id="btn-reset" style="margin-top: 5px; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">RESET DEFAULTS</button>
 
             <div class="legend-container">
                 <div class="legend-title">Visibility</div>
@@ -395,7 +429,8 @@ function calculatePhysics(t) {
     
     // 4. Forces
     // Finite wing correction: Cl = 2*pi*alpha / (1 + 2/AR)
-    const Cl = (2 * Math.PI * alpha) / (1 + 2 / CONFIG.AR);
+    let Cl = (2 * Math.PI * alpha) / (1 + 2 / CONFIG.AR);
+
     // Induced drag factor k approx 1 / (pi * AR)
     const k = 1 / (Math.PI * CONFIG.AR);
     const Cd = CONFIG.Cd0 + k * (Cl * Cl);
@@ -451,132 +486,157 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
     const h = ctx.canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    const leftMargin = 44;
-    const rightMargin = 8;
-    const topMargin = 18;
-    const bottomMargin = 12;
+    const fontStack = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    
+    const leftMargin = 50;
+    const rightMargin = 10;
+    const topMargin = 20;
+    const bottomMargin = 15;
 
-    ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    // Title
+    ctx.font = "bold 10px " + fontStack;
     ctx.fillStyle = "#666";
-    ctx.fillText(title, leftMargin, 12);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(title.toUpperCase(), leftMargin, 5);
 
     const plotW = w - leftMargin - rightMargin;
     const plotH = h - topMargin - bottomMargin;
 
-    // Draw Y axis
-    ctx.strokeStyle = '#ccc';
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, topMargin);
-    ctx.lineTo(leftMargin, h - bottomMargin);
-    ctx.stroke();
-
     if (data.length < 2) return;
 
-    // Dynamic scaling: find max magnitude (for signed) or max value (for unsigned)
+    // Scaling
     let maxVal;
     if (colorNegative) {
         maxVal = Math.max(...data.map(v => Math.abs(v)));
     } else {
         maxVal = Math.max(...data);
     }
-    if (!isFinite(maxVal) || maxVal <= 0) maxVal = 1;
-    // Add a small padding so the line never touches the top
-    maxVal *= 1.08;
+    if (!isFinite(maxVal) || maxVal <= 1) maxVal = 10;
 
     const midY = colorNegative ? (topMargin + plotH / 2) : (topMargin + plotH);
     const scaleY = colorNegative ? (plotH / 2) / maxVal : (plotH) / maxVal;
 
-    // Draw horizontal zero (or baseline) line
-    ctx.strokeStyle = '#eee';
-    ctx.beginPath(); ctx.moveTo(leftMargin, midY); ctx.lineTo(w - rightMargin, midY); ctx.stroke();
+    // Grid & Axis
+    ctx.strokeStyle = '#e4e4e7'; // Zinc-200
+    ctx.lineWidth = 1;
+    
+    // Zero line
+    ctx.beginPath(); 
+    ctx.moveTo(leftMargin, midY); 
+    ctx.lineTo(w - rightMargin, midY); 
+    ctx.stroke();
 
-    // Y labels: top, mid (zero if signed), bottom
-    ctx.fillStyle = '#666';
-    ctx.font = '11px sans-serif';
+    // Max line
+    ctx.beginPath();
+    ctx.moveTo(leftMargin, topMargin);
+    ctx.lineTo(w - rightMargin, topMargin);
+    ctx.stroke();
+
     if (colorNegative) {
-        ctx.fillText(maxVal.toFixed(0), 6, topMargin + 10);
-        ctx.fillText('0', 8, midY + 4);
-        ctx.fillText((-maxVal).toFixed(0), 6, h - bottomMargin);
-    } else {
-        ctx.fillText(maxVal.toFixed(0), 6, topMargin + 10);
-        ctx.fillText('0', 8, h - bottomMargin);
+        ctx.beginPath();
+        ctx.moveTo(leftMargin, h - bottomMargin);
+        ctx.lineTo(w - rightMargin, h - bottomMargin);
+        ctx.stroke();
     }
 
-    // Plot area and line
-    const stepX = plotW / Math.max(1, data.length - 1);
+    // Labels
+    ctx.fillStyle = "#666";
+    ctx.font = "9px " + fontStack;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
 
-    // Build points
+    if (colorNegative) {
+        ctx.fillText(maxVal.toFixed(0), leftMargin - 6, topMargin);
+        ctx.fillText('0', leftMargin - 6, midY);
+        ctx.fillText((-maxVal).toFixed(0), leftMargin - 6, h - bottomMargin);
+    } else {
+        ctx.fillText(maxVal.toFixed(0), leftMargin - 6, topMargin);
+        ctx.fillText('0', leftMargin - 6, h - bottomMargin);
+    }
+
+    // Plot
+    const stepX = plotW / Math.max(1, data.length - 1);
     const pts = [];
     for (let i = 0; i < data.length; i++) {
-        const val = data[i];
-        const px = leftMargin + i * stepX;
-        const py = midY - (val * scaleY);
-        pts.push({px, py});
+        pts.push({
+            x: leftMargin + i * stepX,
+            y: midY - (data[i] * scaleY)
+        });
     }
 
-    // Build polygon path that closes down to the baseline (midY)
-    ctx.beginPath();
-    for (let i = 0; i < pts.length; i++) {
-        const p = pts[i];
-        if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
-    }
-    ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
-    ctx.lineTo(leftMargin, midY);
-    ctx.closePath();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
 
-    // Fill only the area enclosed by the curve and the baseline.
-    // For signed graphs (colorNegative provided) fill positive and negative sides separately
     if (colorNegative) {
-        // Positive area (curve above baseline): intersect polygon with rect above midY
+        // 1. Positive Area
         ctx.save();
-        // Clip to polygon
         ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) { const p = pts[i]; if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py); }
-        ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
-        ctx.lineTo(leftMargin, midY);
-        ctx.closePath();
+        ctx.rect(leftMargin, topMargin - 2, plotW, midY - topMargin + 2);
         ctx.clip();
-        // Intersect with rectangle above midY
-        ctx.beginPath(); ctx.rect(leftMargin, topMargin, plotW, Math.max(0, midY - topMargin)); ctx.clip();
-        ctx.fillStyle = colorPositive || 'rgba(0,0,0,0.15)';
-        ctx.fillRect(leftMargin, topMargin, plotW, Math.max(0, midY - topMargin));
+        
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, midY);
+        for (let p of pts) ctx.lineTo(p.x, p.y);
+        ctx.lineTo(pts[pts.length-1].x, midY);
+        ctx.closePath();
+        
+        let grad = ctx.createLinearGradient(0, topMargin, 0, midY);
+        grad.addColorStop(0, colorPositive); 
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = grad;
+        ctx.fill();
+        
+        ctx.strokeStyle = colorPositive.replace(/[\d.]+\)$/, '1)'); 
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
         ctx.restore();
 
-        // Negative area (curve below baseline): intersect polygon with rect below midY
+        // 2. Negative Area
         ctx.save();
         ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) { const p = pts[i]; if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py); }
-        ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
-        ctx.lineTo(leftMargin, midY);
-        ctx.closePath();
+        ctx.rect(leftMargin, midY, plotW, h - bottomMargin - midY + 2);
         ctx.clip();
-        ctx.beginPath(); ctx.rect(leftMargin, midY, plotW, Math.max(0, (h - bottomMargin) - midY)); ctx.clip();
-        ctx.fillStyle = colorNegative || 'rgba(255,0,0,0.15)';
-        ctx.fillRect(leftMargin, midY, plotW, Math.max(0, (h - bottomMargin) - midY));
+        
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, midY);
+        for (let p of pts) ctx.lineTo(p.x, p.y);
+        ctx.lineTo(pts[pts.length-1].x, midY);
+        ctx.closePath();
+        
+        grad = ctx.createLinearGradient(0, midY, 0, h - bottomMargin);
+        grad.addColorStop(0, "rgba(255,255,255,0)");
+        grad.addColorStop(1, colorNegative);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        
+        ctx.strokeStyle = colorNegative.replace(/[\d.]+\)$/, '1)');
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
         ctx.restore();
+
     } else {
-        // Single-sided fill: clip to polygon and fill
-        ctx.save();
         ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) { const p = pts[i]; if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py); }
-        ctx.lineTo(leftMargin + (pts.length - 1) * stepX, midY);
-        ctx.lineTo(leftMargin, midY);
+        ctx.moveTo(pts[0].x, h - bottomMargin);
+        for (let p of pts) ctx.lineTo(p.x, p.y);
+        ctx.lineTo(pts[pts.length-1].x, h - bottomMargin);
         ctx.closePath();
-        ctx.clip();
-        ctx.fillStyle = colorPositive || 'rgba(0,0,0,0.15)';
-        ctx.fillRect(leftMargin, topMargin, plotW, plotH);
-        ctx.restore();
-    }
 
-    // Stroke the line on top
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let i = 0; i < pts.length; i++) {
-        const p = pts[i];
-        if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+        let grad = ctx.createLinearGradient(0, topMargin, 0, h - bottomMargin);
+        grad.addColorStop(0, colorPositive);
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+            if (i===0) ctx.moveTo(pts[i].x, pts[i].y);
+            else ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        ctx.strokeStyle = colorPositive.replace(/[\d.]+\)$/, '1)');
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
     }
-    ctx.stroke();
 }
 
 function drawSignGraph(ctx, data, title) {
@@ -910,9 +970,9 @@ function render(data) {
     ctx.restore();
     
     // Graphs
-    drawSimpleGraph(ctxThrust, state.thrustHistory, "NET THRUST (N)", "rgba(0,128,0,0.35)", "rgba(255,0,0,0.28)");
-    drawSimpleGraph(ctxPower, state.powerHistory, "RIDER INSTANTANEOUS POWER (Watts)", "rgba(255,165,0,0.4)", null);
-    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "RIDER AVG POWER (Watts)", "rgba(255,140,0,0.5)", null);
+    drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
+    drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", null);
+    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Avg Power (W)", "rgba(249, 115, 22, 0.5)", null);
 
     // Update avg thrust status bar
     ui.avgThrust.textContent = avgThrust.toFixed(0);
