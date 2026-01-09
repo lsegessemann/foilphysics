@@ -197,6 +197,50 @@
                 top: 10px;
             }
         }
+
+        /* Custom Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            border-bottom: 1px dotted #888;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 8px 10px;
+            position: absolute;
+            z-index: 100;
+            top: 50%;
+            right: 105%;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: opacity 0.1s;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            font-weight: normal;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+        .tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            margin-top: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent transparent #333;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -210,7 +254,14 @@
                 Speed: <span id="val-speed">18.0</span> km/h<br>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Pitch (vs Horizon): <span id="val-pitch">0.0</span>°<br>
-                AoA (vs Water): <span id="val-aoa">0.0</span>°<br>
+                <span class="tooltip">AoA (vs Water flow)
+                    <span class="tooltip-text">
+                        The angle of the wing relative to the oncoming water flow (not the horizon).<br>
+                        • Positive AoA generates Lift.<br>
+                        • Too high (>12°) causes Drag and Stalling.<br>
+                        • In a pump, plunging down increases your AoA, while rising up decreases it.
+                    </span>
+                </span>: <span id="val-aoa">0.0</span>°<br>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Inst. Power: <span id="val-watts">0</span> W<br>
                 Avg. Power: <span id="val-avg-watts">0</span> W
