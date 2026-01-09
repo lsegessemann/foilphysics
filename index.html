@@ -271,16 +271,19 @@
         <div id="dashboard-row">
             <div id="graphs-column">
                 <div class="canvas-wrapper">
-                    <canvas id="graphThrust" width="650" height="90"></canvas>
+                    <canvas id="graphLift" width="650" height="60"></canvas>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="graphThrust" width="650" height="60"></canvas>
                 </div>
                 <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphPower" width="650" height="90"></canvas>
+                    <canvas id="graphPower" width="650" height="60"></canvas>
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphAvgPower" width="650" height="90"></canvas>
+                    <canvas id="graphAvgPower" width="650" height="60"></canvas>
                 </div>
             </div>
             
@@ -401,6 +404,7 @@ let state = {
     heave_amp: 0.22,
     pathX: [],
     pathZ: [],
+    liftHistory: [],
     thrustHistory: [],
     avgThrustHistory: [],
     powerHistory: [],
@@ -423,6 +427,7 @@ const foilShape = getNACA00xx(0.15, 40);
 // --- DOM ELEMENTS ---
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
+const ctxLift = document.getElementById('graphLift').getContext('2d');
 const ctxThrust = document.getElementById('graphThrust').getContext('2d');
 const ctxPower = document.getElementById('graphPower').getContext('2d');
 const ctxAvgPower = document.getElementById('graphAvgPower').getContext('2d');
@@ -561,7 +566,7 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
     const bottomMargin = 15;
 
     // Title
-    ctx.font = "bold 10px " + fontStack;
+    ctx.font = "bold 8px " + fontStack;
     ctx.fillStyle = "#666";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
@@ -609,7 +614,7 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
 
     // Labels
     ctx.fillStyle = "#666";
-    ctx.font = "9px " + fontStack;
+    ctx.font = "7px " + fontStack;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
@@ -838,6 +843,9 @@ function updatePhysicsState(dtOverride) {
         const phys = calculatePhysics(state.t); // Recalculate for the new time
         
         // --- Update History Arrays ---
+        state.liftHistory.push(phys.Lz);
+        if (state.liftHistory.length > 300) state.liftHistory.shift();
+        
         state.thrustHistory.push(phys.thrust);
         if (state.thrustHistory.length > 300) state.thrustHistory.shift();
         
@@ -1052,6 +1060,7 @@ function render(data) {
     ctx.restore();
     
     // Graphs
+    drawSimpleGraph(ctxLift, state.liftHistory, "Vertical Lift (N)", "rgba(59, 130, 246, 0.5)", "rgba(239, 68, 68, 0.5)");
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
     drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(156, 163, 175, 0.5)");
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Avg Power (W)", "rgba(249, 115, 22, 0.5)", null);
@@ -1097,12 +1106,13 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     
     // Clear history for clean restart
-    state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = [];
 });
 
 document.getElementById('btn-replay').addEventListener('click', () => {
     state.t = 0;
     state.historyTimer = 0;
+    state.liftHistory = [];
     state.thrustHistory = [];
     state.powerHistory = [];
     state.avgPowerHistory = [];
@@ -1126,6 +1136,7 @@ window.addEventListener('keydown', (e) => {
         if (e.code === 'ArrowRight') render(updatePhysicsState());
         if (e.code === 'ArrowLeft') {
             if (state.thrustHistory.length > 0) {
+                state.liftHistory.pop();
                 state.thrustHistory.pop();
                 state.powerHistory.pop();
                 state.avgPowerHistory.pop();
