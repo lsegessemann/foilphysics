@@ -170,12 +170,12 @@
         }
 
         /* Make graphs fill the available height to align with controls */
-        #graphs-column .canvas-wrapper:not(#avgThrustStatus) {
+        #graphs-column .canvas-wrapper:not(#avgThrustStatus):not(#avgLiftStatus) {
             flex: 1;
             display: flex;
             flex-direction: column;
         }
-        #graphs-column .canvas-wrapper:not(#avgThrustStatus) canvas {
+        #graphs-column .canvas-wrapper:not(#avgThrustStatus):not(#avgLiftStatus) canvas {
             width: 100%;
             height: 100%;
         }
@@ -272,6 +272,9 @@
             <div id="graphs-column">
                 <div class="canvas-wrapper">
                     <canvas id="graphLift" width="650" height="60"></canvas>
+                </div>
+                <div class="canvas-wrapper" id="avgLiftStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
+                    Avg Lift: Balanced : <span id="val-avg-lift">0</span> N
                 </div>
                 <div class="canvas-wrapper">
                     <canvas id="graphThrust" width="650" height="60"></canvas>
@@ -1064,6 +1067,26 @@ function render(data) {
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
     drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(156, 163, 175, 0.5)");
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Avg Power (W)", "rgba(249, 115, 22, 0.5)", null);
+
+    // Update avg lift status bar
+    const avgLift = state.liftHistory.reduce((a, b) => a + b, 0) / (state.liftHistory.length || 1);
+    const weight = CONFIG.mass * CONFIG.g;
+    const liftStatusEl = document.getElementById('avgLiftStatus');
+    const liftDiff = avgLift - weight;
+    
+    if (liftDiff < -20) { // Tolerance of 20N
+        liftStatusEl.style.backgroundColor = '#ffcdd2';
+        liftStatusEl.style.color = '#b71c1c';
+        liftStatusEl.textContent = `Avg Lift: Sinking (${avgLift.toFixed(0)} N < ${weight.toFixed(0)} N)`;
+    } else if (liftDiff > 20) {
+        liftStatusEl.style.backgroundColor = '#bbdefb';
+        liftStatusEl.style.color = '#0d47a1';
+        liftStatusEl.textContent = `Avg Lift: Climbing (${avgLift.toFixed(0)} N > ${weight.toFixed(0)} N)`;
+    } else {
+        liftStatusEl.style.backgroundColor = '#c8e6c9';
+        liftStatusEl.style.color = '#1b5e20';
+        liftStatusEl.textContent = `Avg Lift: Balanced (~${weight.toFixed(0)} N)`;
+    }
 
     // Update avg thrust status bar
     ui.avgThrust.textContent = avgThrust.toFixed(0);
