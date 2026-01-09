@@ -344,40 +344,40 @@
             
             <div id="controls">
             <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
-                <label>Frequency: <span id="disp-freq">1.2</span> Hz</label>
-                <input type="range" id="in-freq" min="0.01" max="2.0" step="0.01" value="1.2">
+                <label>Frequency: <span id="disp-freq">1.65</span> Hz</label>
+                <input type="range" id="in-freq" min="0.01" max="2.0" step="0.01" value="1.65">
             </div>
             <div class="control-group" title="Vertical range of motion for the foil path.">
-                <label>Amplitude: <span id="disp-amp">0.20</span> m</label>
-                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.20">
+                <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
+                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
             </div>
             <div class="control-group" title="Forward velocity of the rider.">
-                <label>Speed: <span id="disp-speed">18.0</span> km/h</label>
-                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="18.0">
+                <label>Speed: <span id="disp-speed">20.0</span> km/h</label>
+                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="20.0">
             </div>
             <div class="control-group" title="Total weight of rider plus gear.">
                 <label>Mass: <span id="disp-mass">70</span> kg</label>
                 <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
             </div>
             <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
-                <label>Wing Area: <span id="disp-area">1500</span> cm²</label>
-                <input type="range" id="in-area" min="600" max="2000" step="50" value="1500">
+                <label>Wing Area: <span id="disp-area">1350</span> cm²</label>
+                <input type="range" id="in-area" min="600" max="2000" step="50" value="1350">
             </div>
             <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
-                <label>Aspect Ratio: <span id="disp-ar">13.0</span></label>
-                <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.0">
+                <label>Aspect Ratio: <span id="disp-ar">13.9</span></label>
+                <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.9">
             </div>
             <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
                 <label>Drag Coeff (Cd0): <span id="disp-cd0">0.015</span></label>
                 <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.015">
             </div>
             <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
-                <label>Frontwing Pitch Trim: <span id="disp-trim">3.5</span>°</label>
-                <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="3.5">
+                <label>Frontwing Pitch Trim: <span id="disp-trim">3.3</span>°</label>
+                <input type="range" id="in-trim" min="-2.0" max="6.0" step="0.1" value="3.3">
             </div>
             <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
                 <label>Phase Shift: <span id="disp-phase">90</span>°</label>
-                <input type="range" id="in-phase" min="0" max="180" step="5" value="90">
+                <input type="range" id="in-phase" min="75" max="105" step="5" value="90">
             </div>
             <div class="control-group" title="Zoom level for the foil visualization.">
                 <label>Visualization Scale: <span id="disp-size">0.40</span></label>
@@ -471,19 +471,19 @@
 // --- CONFIGURATION ---
 const CONFIG = {
     mass: 70.0,          // Total mass (Rider + Board) in kg
-    U: 18.0 / 3.6,       // Forward speed in m/s (converted from km/h)
+    U: 20.0 / 3.6,       // Forward speed in m/s (converted from km/h)
     rho: 1000.0,         // Water density in kg/m³
-    S: 0.15,             // Wing Area in m² (1500 cm²)
+    S: 0.135,            // Wing area in m² (e.g., 1350 cm² = 0.135 m²)
     Cd0: 0.015,          // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
     k: 0.05,             // Induced Drag Factor (recalculated based on AR)
     g: 9.81,             // Gravity (m/s²)
     visual_size_m: 0.4,  // Visual scale for foil chord length
     // Scales
-    scale_L: 0.5, scale_D: 5.0, scale_T: 5.0, scale_R: 0.5, scale_N: 0.5,
-    AR: 13.0,            // Aspect Ratio (Span² / Area)
+    scale_L: 0.5, scale_D: 5.0, scale_T: 1.0, scale_R: 0.5, scale_N: 0.5,
+    AR: 13.9,            // Aspect Ratio (Span² / Area)
     
     // Adjustable Parameters
-    pitch_trim_deg: 3.5,    // Base pitch angle in degrees
+    pitch_trim_deg: 3.3,    // Base pitch angle in degrees
     phase_shift_deg: 90.0   // Phase difference between Heave and Pitch
 };
 
@@ -497,13 +497,14 @@ let state = {
     historyTimer: 0,
     paused: false,
     slowMotion: false,
-    freq: 1.2,
-    heave_amp: 0.20,
+    freq: 1.65,
+    heave_amp: 0.13,
     pathX: [],
     pathZ: [],
     liftHistory: [],
     thrustHistory: [],
     avgThrustHistory: [],
+    avgLiftHistory: [],
     powerHistory: [],
     avgPowerHistory: []
 };
@@ -951,19 +952,20 @@ function updatePhysicsState(dtOverride) {
         
         // --- Update History Arrays ---
         state.liftHistory.push(phys.Lz);
-        if (state.liftHistory.length > 300) state.liftHistory.shift();
+        if (state.liftHistory.length > 1000) state.liftHistory.shift();
         
         state.thrustHistory.push(phys.thrust);
-        if (state.thrustHistory.length > 300) state.thrustHistory.shift();
+        if (state.thrustHistory.length > 1000) state.thrustHistory.shift();
         
         state.powerHistory.push(phys.power);
-        if (state.powerHistory.length > 300) state.powerHistory.shift();
+        if (state.powerHistory.length > 1000) state.powerHistory.shift();
         
-        // Calculate and store normalized power (NP) over a 4-cycle window
+        // Calculate window (4 cycles) for smoothing
         const cyclePeriod = 1.0 / state.freq;
         const samplesPerCycle = Math.max(1, cyclePeriod / state.dt);
         const windowSize = Math.ceil(samplesPerCycle * 4);
         
+        // Power (Normalized)
         let sumFourthPower = 0;
         const start = Math.max(0, state.powerHistory.length - windowSize);
         const count = state.powerHistory.length - start;
@@ -973,12 +975,29 @@ function updatePhysicsState(dtOverride) {
         const avgPower = (count > 0) ? Math.pow(sumFourthPower / count, 0.25) : 0;
 
         state.avgPowerHistory.push(avgPower);
-        if (state.avgPowerHistory.length > 300) state.avgPowerHistory.shift();
+        if (state.avgPowerHistory.length > 1000) state.avgPowerHistory.shift();
 
-        // Calculate and store average thrust (over the full history)
-        const avgThrust = state.thrustHistory.reduce((a, b) => a + b, 0) / state.thrustHistory.length;
+        // Average Thrust (Windowed)
+        let thrustSum = 0;
+        const startThrust = Math.max(0, state.thrustHistory.length - windowSize);
+        const countThrust = state.thrustHistory.length - startThrust;
+        for (let i = state.thrustHistory.length - 1; i >= startThrust; i--) {
+            thrustSum += state.thrustHistory[i];
+        }
+        const avgThrust = (countThrust > 0) ? thrustSum / countThrust : 0;
         state.avgThrustHistory.push(avgThrust);
-        if (state.avgThrustHistory.length > 300) state.avgThrustHistory.shift();
+        if (state.avgThrustHistory.length > 1000) state.avgThrustHistory.shift();
+
+        // Average Lift (Windowed)
+        let liftSum = 0;
+        const startLift = Math.max(0, state.liftHistory.length - windowSize);
+        const countLift = state.liftHistory.length - startLift;
+        for (let i = state.liftHistory.length - 1; i >= startLift; i--) {
+            liftSum += state.liftHistory[i];
+        }
+        const avgLift = (countLift > 0) ? liftSum / countLift : 0;
+        state.avgLiftHistory.push(avgLift);
+        if (state.avgLiftHistory.length > 1000) state.avgLiftHistory.shift();
 
         // Update the visual path of the foil (synced with physics steps)
         state.pathX.push(phys.x);
@@ -992,15 +1011,16 @@ function updatePhysicsState(dtOverride) {
     // Get the most recent averages for the UI display
     const currentAvgPower = state.avgPowerHistory.length > 0 ? state.avgPowerHistory[state.avgPowerHistory.length - 1] : 0;
     const currentAvgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length - 1] : 0;
+    const currentAvgLift = state.avgLiftHistory.length > 0 ? state.avgLiftHistory[state.avgLiftHistory.length - 1] : 0;
 
     // Calculate smooth physics for rendering (interpolate time using the remainder)
     const smoothPhys = calculatePhysics(state.t + state.historyTimer);
 
-    return { phys: smoothPhys, avgPower: currentAvgPower, avgThrust: currentAvgThrust };
+    return { phys: smoothPhys, avgPower: currentAvgPower, avgThrust: currentAvgThrust, avgLift: currentAvgLift };
 }
 
 function render(data) {
-    const { phys, avgPower, avgThrust } = data;
+    const { phys, avgPower, avgThrust, avgLift } = data;
 
     // UI
     ui.time.textContent = state.t.toFixed(2);
@@ -1174,7 +1194,6 @@ function render(data) {
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Normalized Power (W)", "rgba(249, 115, 22, 0.5)", null);
 
     // Update avg lift status bar
-    const avgLift = state.liftHistory.reduce((a, b) => a + b, 0) / (state.liftHistory.length || 1);
     const weight = CONFIG.mass * CONFIG.g;
     const liftStatusEl = document.getElementById('avgLiftStatus');
     const liftDiff = avgLift - weight;
@@ -1225,20 +1244,20 @@ document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.ph
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
 
 document.getElementById('btn-reset').addEventListener('click', () => {
-    state.freq = 1.2; document.getElementById('in-freq').value = 1.2; ui.dispFreq.textContent = "1.2";
-    state.heave_amp = 0.20; document.getElementById('in-amp').value = 0.20; ui.dispAmp.textContent = "0.20";
-    CONFIG.U = 18.0 / 3.6; document.getElementById('in-speed').value = 18.0; ui.dispSpeed.textContent = "18.0";
+    state.freq = 1.65; document.getElementById('in-freq').value = 1.65; ui.dispFreq.textContent = "1.65";
+    state.heave_amp = 0.13; document.getElementById('in-amp').value = 0.13; ui.dispAmp.textContent = "0.13";
+    CONFIG.U = 20.0 / 3.6; document.getElementById('in-speed').value = 20.0; ui.dispSpeed.textContent = "20.0";
     CONFIG.mass = 70.0; document.getElementById('in-mass').value = 70; ui.dispMass.textContent = "70";
-    CONFIG.S = 0.15; document.getElementById('in-area').value = 1500; ui.dispArea.textContent = "1500";
-    CONFIG.AR = 13.0; document.getElementById('in-ar').value = 13.0; ui.dispAr.textContent = "13.0";
+    CONFIG.S = 0.135; document.getElementById('in-area').value = 1350; ui.dispArea.textContent = "1350";
+    CONFIG.AR = 13.9; document.getElementById('in-ar').value = 13.9; ui.dispAr.textContent = "13.9";
     CONFIG.Cd0 = 0.015; document.getElementById('in-cd0').value = 0.015; ui.dispCd0.textContent = "0.015";
-    CONFIG.pitch_trim_deg = 3.5; document.getElementById('in-trim').value = 3.5; ui.dispTrim.textContent = "3.5";
+    CONFIG.pitch_trim_deg = 3.3; document.getElementById('in-trim').value = 3.3; ui.dispTrim.textContent = "3.3";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     
     // Clear history for clean restart
-    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = [];
 });
 
 document.getElementById('btn-replay').addEventListener('click', () => {
@@ -1249,10 +1268,11 @@ document.getElementById('btn-replay').addEventListener('click', () => {
     state.powerHistory = [];
     state.avgPowerHistory = [];
     state.avgThrustHistory = [];
+    state.avgLiftHistory = [];
     state.pathX = [];
     state.pathZ = [];
     state.paused = false;
-    render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0 });
+    render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0, avgLift: 0 });
 });
 
 document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
@@ -1273,6 +1293,7 @@ window.addEventListener('keydown', (e) => {
                 state.powerHistory.pop();
                 state.avgPowerHistory.pop();
                 state.avgThrustHistory.pop();
+                state.avgLiftHistory.pop();
                 state.pathX.pop();
                 state.pathZ.pop();
 
@@ -1282,7 +1303,8 @@ window.addEventListener('keydown', (e) => {
                 render({ 
                     phys: calculatePhysics(state.t), 
                     avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
-                    avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0 
+                    avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0,
+                    avgLift: state.avgLiftHistory[state.avgLiftHistory.length-1] || 0
                 });
             }
         }
@@ -1307,7 +1329,7 @@ function loop(timestamp) {
     requestAnimationFrame(loop);
 }
 
-render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0 });
+render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0, avgLift: 0 });
 loop();
 
 </script>
