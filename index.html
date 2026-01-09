@@ -355,9 +355,17 @@
                 <label>Speed: <span id="disp-speed">20.0</span> km/h</label>
                 <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="20.0">
             </div>
+            <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
+                <label>Frontwing Pitch Trim: <span id="disp-trim">3.3</span>°</label>
+                <input type="range" id="in-trim" min="-2.0" max="6.0" step="0.1" value="3.3">
+            </div>
             <div class="control-group" title="Total weight of rider plus gear.">
                 <label>Mass: <span id="disp-mass">70</span> kg</label>
                 <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
+            </div>
+            <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
+                <label>Swing Weight: <span id="disp-swing">40</span>%</label>
+                <input type="range" id="in-swing" min="0.1" max="0.8" step="0.05" value="0.4">
             </div>
             <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
                 <label>Wing Area: <span id="disp-area">1350</span> cm²</label>
@@ -370,10 +378,6 @@
             <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
                 <label>Drag Coeff (Cd0): <span id="disp-cd0">0.015</span></label>
                 <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.015">
-            </div>
-            <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
-                <label>Frontwing Pitch Trim: <span id="disp-trim">3.3</span>°</label>
-                <input type="range" id="in-trim" min="-2.0" max="6.0" step="0.1" value="3.3">
             </div>
             <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
                 <label>Phase Shift: <span id="disp-phase">90</span>°</label>
@@ -484,7 +488,8 @@ const CONFIG = {
     
     // Adjustable Parameters
     pitch_trim_deg: 3.3,    // Base pitch angle in degrees
-    phase_shift_deg: 90.0   // Phase difference between Heave and Pitch
+    phase_shift_deg: 90.0,  // Phase difference between Heave and Pitch
+    swing_weight_ratio: 0.4 // Percentage of body mass considered moving (legs)
 };
 
 // --- VISIBILITY STATE ---
@@ -550,14 +555,26 @@ const ui = {
     dispAr: document.getElementById('disp-ar'),
     dispCd0: document.getElementById('disp-cd0'),
     dispTrim: document.getElementById('disp-trim'),
-    dispPhase: document.getElementById('disp-phase')
+    dispPhase: document.getElementById('disp-phase'),
+    dispSwing: document.getElementById('disp-swing')
 };
 
 // --- PHYSICS ENGINE ---
 function calculatePhysics(t) {
     const omega = 2 * Math.PI * state.freq;
     
-    // 1. Amplitudes & Setup
+    // --- 1. CONFIGURATION FOR 2-MASS MODEL (LEGS + BOARD) ---
+    // Standard anthropometry: Both legs are approx 33-35% of total body mass.
+    // The "Moving Mass" is the Board + The Legs.
+    // The "Fixed Mass" is the Torso/Head/Arms.
+    
+    const m_board_gear = 8.0; // Foil + Board + Wet wetusit (kg)
+    const m_legs = CONFIG.mass * CONFIG.swing_weight_ratio;
+    
+    const m_moving = m_board_gear + m_legs; 
+    // m_moving is the mass we must accelerate violently (~30-35kg total)
+    
+    // --- 2. KINEMATICS (Moving Mass Motion) ---
     const vz_max = state.heave_amp * omega;
     const gamma_max = Math.atan2(vz_max, CONFIG.U);
     const pitch_amp = gamma_max * 0.90; 
@@ -565,18 +582,14 @@ function calculatePhysics(t) {
     const pitch_trim = CONFIG.pitch_trim_deg * (Math.PI / 180);
     const phase_rad = CONFIG.phase_shift_deg * (Math.PI / 180);
 
-    // 2. Motion (Time-based)
-    // Heave: Cosine (Starts at top)
+    // Position (z), Velocity (vz), Acceleration (az) of the FEET/BOARD
     const z = state.heave_amp * Math.cos(omega * t);
-    
-    // Heave Derivatives
     const vz = -state.heave_amp * omega * Math.sin(omega * t);
     const az = -state.heave_amp * (omega ** 2) * Math.cos(omega * t);
     
-    // Pitch: Uses Phase Shift relative to Heave
     const theta = pitch_trim + pitch_amp * Math.cos(omega * t + phase_rad);
 
-    // 3. Angles & Velocities
+    // --- 3. AERODYNAMICS ---
     const x = CONFIG.U * t;
     const vx = CONFIG.U;
     
@@ -584,11 +597,8 @@ function calculatePhysics(t) {
     const alpha = theta - gamma;
     const v_sq = vx*vx + vz*vz;
     
-    // 4. Forces
-    // Finite wing correction: Cl = 2*pi*alpha / (1 + 2/AR)
+    // Lift & Drag
     let Cl = (2 * Math.PI * alpha) / (1 + 2 / CONFIG.AR);
-
-    // Induced drag factor k approx 1 / (pi * AR)
     const k = 1 / (Math.PI * CONFIG.AR);
     const Cd = CONFIG.Cd0 + k * (Cl * Cl);
     
@@ -598,40 +608,47 @@ function calculatePhysics(t) {
     const Lx = -L_mag * Math.sin(gamma); const Lz = L_mag * Math.cos(gamma);
     const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
     
-  // 5. Rider Force & Power (UPDATED)
-    // ---------------------------------------------------------
-    // F_inertia: The total vertical force required to move the mass (m*g + m*a)
-    const F_inertia = CONFIG.mass * (CONFIG.g + az);
+    // --- 4. DYNAMICS (The "Leg Stomp") ---
     
-    // F_hydro_z: The vertical force provided by the water (Lift + vertical Drag)
-    const F_hydro_z = Lz + Dz;
-    
-    // F_rider_action: The remaining force the rider must supply.
-    // Logic: Required Force = Water Force + Rider Force
-    // Therefore: Rider Force = Required Force - Water Force
-    const F_r = F_inertia - F_hydro_z;
-    
-    // CRITICAL FIX: If the foil lifts more than the rider weighs (F_req < 0),
-    // the rider is just being carried. They cannot "pull" the board down 
-    // to generate power. Clamp force to 0.
-    const F_rider_action = Math.max(0, F_r);
-    
-    // Power = Force * Velocity
-    // We clamp to 0 because we assume the rider cannot "regenerate" energy 
-    // when the board pushes them up (eccentric phase).
-    let power = F_rider_action * (-vz);
-    power = Math.max(0, power);
-    // ---------------------------------------------------------
+    // F_hydro_z: The water pushing UP on the foil.
+    const F_hydro_z = Lz + Dz; 
 
-    // 6. Vector Components
+    // F_inertia_moving: Force needed to accelerate Board + Legs
+    // If az is negative (accelerating down), this reduces the need for support.
+    const F_inertia_moving = m_moving * (CONFIG.g + az);
+
+    // F_legs_push: The force the TORSO exerts on the LEGS to drive them.
+    // Free Body Diagram on Moving Mass (Legs + Board):
+    // Upward Forces: Hydro_Lift
+    // Downward Forces: Gravity, Push_from_Torso
+    // Net Acceleration: az
+    // Equation: Hydro - Gravity - Push = m * az
+    // Solve for Push: Push = Hydro - m(g + az)
+    let F_legs_push = F_hydro_z - F_inertia_moving;
+    
+    // CLAMP:
+    // If F_legs_push is negative, it means the board is pulling the legs down 
+    // (or lifting them up faster than they want to go). 
+    // In unstrapped riding, we can't pull up. We just unweight (0 force).
+    // However, with heavy legs, you might actively push them down (positive force)
+    // even if the board is falling, just to keep up with the fall rate!
+    const F_rider_action = Math.max(0, F_legs_push);
+
+    // --- 5. POWER ---
+    // Power = Force * Velocity of Extension
+    // We assume Torso is fixed (V=0). Legs move at vz.
+    // Extension Velocity = -vz (positive when board moves down)
+    let power = F_rider_action * (-vz);
+    
+    // Only count positive power (concentric muscle phase)
+    power = Math.max(0, power);
+
+    // --- 6. OUTPUTS ---
     const Rx = 0; 
-    // Rz is the visual vector component. F_rider_action is magnitude of push.
-    // We want a Down arrow, so Rz should be negative.
     const Rz = -F_rider_action; 
     
-    // Net Force = Mass * Acceleration
     const Nx = CONFIG.mass * 0; 
-    const Nz = CONFIG.mass * az; 
+    const Nz = CONFIG.mass * az; // Visualizing total acceleration for reference
     
     return {
         x, z, alpha, gamma, theta, vz, az,
@@ -960,10 +977,10 @@ function updatePhysicsState(dtOverride) {
         state.powerHistory.push(phys.power);
         if (state.powerHistory.length > 1000) state.powerHistory.shift();
         
-        // Calculate window (4 cycles) for smoothing
+        // Calculate window (2 cycles) for smoothing
         const cyclePeriod = 1.0 / state.freq;
         const samplesPerCycle = Math.max(1, cyclePeriod / state.dt);
-        const windowSize = Math.ceil(samplesPerCycle * 4);
+        const windowSize = Math.ceil(samplesPerCycle * 2);
         
         // Power (Normalized)
         let sumFourthPower = 0;
@@ -1242,6 +1259,7 @@ document.getElementById('in-ar').addEventListener('input', (e) => { CONFIG.AR = 
 document.getElementById('in-cd0').addEventListener('input', (e) => { CONFIG.Cd0 = parseFloat(e.target.value); ui.dispCd0.textContent = CONFIG.Cd0.toFixed(3); });
 document.getElementById('in-trim').addEventListener('input', (e) => { CONFIG.pitch_trim_deg = parseFloat(e.target.value); ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1); });
 document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.phase_shift_deg = parseFloat(e.target.value); ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0); });
+document.getElementById('in-swing').addEventListener('input', (e) => { CONFIG.swing_weight_ratio = parseFloat(e.target.value); ui.dispSwing.textContent = (CONFIG.swing_weight_ratio * 100).toFixed(0); });
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
 
 document.getElementById('btn-reset').addEventListener('click', () => {
@@ -1254,6 +1272,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.Cd0 = 0.015; document.getElementById('in-cd0').value = 0.015; ui.dispCd0.textContent = "0.015";
     CONFIG.pitch_trim_deg = 3.3; document.getElementById('in-trim').value = 3.3; ui.dispTrim.textContent = "3.3";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
+    CONFIG.swing_weight_ratio = 0.4; document.getElementById('in-swing').value = 0.4; ui.dispSwing.textContent = "40";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     
