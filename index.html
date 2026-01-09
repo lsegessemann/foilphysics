@@ -364,10 +364,6 @@
                 <label>Mass: <span id="disp-mass">70</span> kg</label>
                 <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
             </div>
-            <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
-                <label>Swing Weight: <span id="disp-swing">40</span>%</label>
-                <input type="range" id="in-swing" min="0.1" max="0.8" step="0.05" value="0.4">
-            </div>
             <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
                 <label>Wing Area: <span id="disp-area">1350</span> cm²</label>
                 <input type="range" id="in-area" min="600" max="2000" step="50" value="1350">
@@ -379,6 +375,14 @@
             <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
                 <label>Drag Coeff (Cd0): <span id="disp-cd0">0.015</span></label>
                 <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.015">
+            </div>
+            <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
+                <label>Swing Weight: <span id="disp-swing">40</span>%</label>
+                <input type="range" id="in-swing" min="0.1" max="0.8" step="0.05" value="0.4">
+            </div>
+            <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
+                <label>System Elasticity: <span id="disp-elastic">30</span>%</label>
+                <input type="range" id="in-elastic" min="0" max="30" step="1" value="30">
             </div>
             <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
                 <label>Phase Shift: <span id="disp-phase">90</span>°</label>
@@ -500,7 +504,8 @@ const CONFIG = {
     // Adjustable Parameters
     pitch_trim_deg: 3.3,    // Base pitch angle in degrees
     phase_shift_deg: 90.0,  // Phase difference between Heave and Pitch
-    swing_weight_ratio: 0.4 // Percentage of body mass considered moving (legs)
+    swing_weight_ratio: 0.4, // Percentage of body mass considered moving (legs)
+    elastic_efficiency: 0.7  // Rider elastic efficiency
 };
 
 // --- VISIBILITY STATE ---
@@ -569,7 +574,8 @@ const ui = {
     dispCd0: document.getElementById('disp-cd0'),
     dispTrim: document.getElementById('disp-trim'),
     dispPhase: document.getElementById('disp-phase'),
-    dispSwing: document.getElementById('disp-swing')
+    dispSwing: document.getElementById('disp-swing'),
+    dispElastic: document.getElementById('disp-elastic')
 };
 
 // --- PHYSICS ENGINE ---
@@ -583,7 +589,6 @@ function calculatePhysics(t) {
     
     const m_board_gear = 8.0; // Foil + Board + Wet wetusit (kg)
     const m_legs = CONFIG.mass * CONFIG.swing_weight_ratio;
-    
     const m_moving = m_board_gear + m_legs; 
     // m_moving is the mass we must accelerate violently (~30-35kg total)
     
@@ -653,17 +658,18 @@ function calculatePhysics(t) {
     // Extension Velocity = -vz (positive when board moves down)
     let rawPower = F_legs_push * (-vz);
     
-    // Filter: Only calculate power during the down-stroke (vz < 0).
+    // Filter 1: Only calculate power during the down-stroke (vz < 0).
     // During up-stroke (vz > 0), we either brake (negative) or phantom-pull (positive), neither of which we want.
     if (vz > 0) rawPower = 0;
-    
-    // Only count positive power (concentric muscle phase)
-    let power = Math.max(0, rawPower);
+
+    // Rule 2: ELASTICITY DISCOUNT
+    // We assume 40% of the energy comes from tendon recoil (free).
+    // You only pay for 60% of the mechanical work.
+    let power = Math.max(0, rawPower * CONFIG.elastic_efficiency);
 
     // --- 6. OUTPUTS ---
     const Rx = 0; 
     const Rz = -F_rider_action; 
-    
     const Nx = CONFIG.mass * 0; 
     const Nz = CONFIG.mass * az; // Visualizing total acceleration for reference
     
@@ -1026,7 +1032,7 @@ function updatePhysicsState(dtOverride) {
         state.thrustHistory.push(phys.thrust);
         if (state.thrustHistory.length > 1000) state.thrustHistory.shift();
         
-        state.powerHistory.push(phys.rawPower);
+        state.powerHistory.push(phys.power);
         if (state.powerHistory.length > 1000) state.powerHistory.shift();
         
         // Calculate window (2 cycles) for smoothing
@@ -1160,8 +1166,8 @@ function render(data) {
     const fuseLen = 0.9 * PPU;
     const fuseRad = 0.015 * PPU;
     const mastX = -0.15 * PPU; 
-    const boardL = 1.4 * PPU;
-    const boardThick = 0.08 * PPU;
+    const boardL = 1.2 * PPU;
+    const boardThick = 0.06 * PPU;
 
     if (VISIBILITY.assembly) {
         // 1. Mast & Fuselage & Stabilizer
@@ -1322,6 +1328,7 @@ document.getElementById('in-cd0').addEventListener('input', (e) => { CONFIG.Cd0 
 document.getElementById('in-trim').addEventListener('input', (e) => { CONFIG.pitch_trim_deg = parseFloat(e.target.value); ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1); });
 document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.phase_shift_deg = parseFloat(e.target.value); ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0); });
 document.getElementById('in-swing').addEventListener('input', (e) => { CONFIG.swing_weight_ratio = parseFloat(e.target.value); ui.dispSwing.textContent = (CONFIG.swing_weight_ratio * 100).toFixed(0); });
+document.getElementById('in-elastic').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.elastic_efficiency = 1.0 - (val / 100.0); ui.dispElastic.textContent = val.toFixed(0); });
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
 
 document.getElementById('btn-reset').addEventListener('click', () => {
@@ -1335,6 +1342,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.pitch_trim_deg = 3.3; document.getElementById('in-trim').value = 3.3; ui.dispTrim.textContent = "3.3";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     CONFIG.swing_weight_ratio = 0.4; document.getElementById('in-swing').value = 0.4; ui.dispSwing.textContent = "40";
+    CONFIG.elastic_efficiency = 0.7; document.getElementById('in-elastic').value = 30; ui.dispElastic.textContent = "30";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     
