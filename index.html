@@ -316,6 +316,7 @@
                 </span>: <span id="val-aoa">0.0</span>°<br>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Inst. Power: <span id="val-watts">0</span> W<br>
+                Avg. Power: <span id="val-arith-avg-watts">0</span> W<br>
                 Norm. Power: <span id="val-avg-watts">0</span> W
             </div>
         </div>
@@ -323,22 +324,22 @@
         <div id="dashboard-row">
             <div id="graphs-column">
                 <div class="canvas-wrapper">
-                    <canvas id="graphLift" width="650" height="60"></canvas>
+                    <canvas id="graphLift" width="1300" height="120"></canvas>
                 </div>
                 <div class="canvas-wrapper" id="avgLiftStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Lift: Balanced : <span id="val-avg-lift">0</span> N
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphThrust" width="650" height="60"></canvas>
+                    <canvas id="graphThrust" width="1300" height="120"></canvas>
                 </div>
                 <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphPower" width="650" height="60"></canvas>
+                    <canvas id="graphPower" width="1300" height="120"></canvas>
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphAvgPower" width="650" height="60"></canvas>
+                    <canvas id="graphAvgPower" width="1300" height="120"></canvas>
                 </div>
             </div>
             
@@ -511,7 +512,8 @@ let state = {
     avgThrustHistory: [],
     avgLiftHistory: [],
     powerHistory: [],
-    avgPowerHistory: []
+    avgPowerHistory: [],
+    arithmeticAvgPowerHistory: []
 };
 
 // --- NACA PROFILE ---
@@ -539,6 +541,7 @@ const ui = {
     time: document.getElementById('val-time'),
     speed: document.getElementById('val-speed'),
     watts: document.getElementById('val-watts'),
+    arithAvgWatts: document.getElementById('val-arith-avg-watts'),
     avgWatts: document.getElementById('val-avg-watts'),
     avgThrust: document.getElementById('val-avg-thrust'),
     
@@ -638,10 +641,14 @@ function calculatePhysics(t) {
     // Power = Force * Velocity of Extension
     // We assume Torso is fixed (V=0). Legs move at vz.
     // Extension Velocity = -vz (positive when board moves down)
-    let power = F_rider_action * (-vz);
+    let rawPower = F_legs_push * (-vz);
+    
+    // Filter: Only calculate power during the down-stroke (vz < 0).
+    // During up-stroke (vz > 0), we either brake (negative) or phantom-pull (positive), neither of which we want.
+    if (vz > 0) rawPower = 0;
     
     // Only count positive power (concentric muscle phase)
-    power = Math.max(0, power);
+    let power = Math.max(0, rawPower);
 
     // --- 6. OUTPUTS ---
     const Rx = 0; 
@@ -655,7 +662,8 @@ function calculatePhysics(t) {
         Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz,
         thrust: Lx + Dx, 
         riderForce: F_rider_action,
-        power: power
+        power: power,
+        rawPower: rawPower
     };
 }
  
@@ -678,24 +686,28 @@ function drawArrow(ctx, startX, startY, u, v, color, scale, user_scale) {
     ctx.fillStyle = color; ctx.fill();
 }
 
-function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
+function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, color2) {
     const w = ctx.canvas.width;
     const h = ctx.canvas.height;
+    
+    // Scale factor for High DPI (assuming base height of 60px)
+    const scale = h / 60;
+
     ctx.clearRect(0, 0, w, h);
 
-    const fontStack = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    const fontStack = "Verdana, Arial, sans-serif";
     
-    const leftMargin = 50;
-    const rightMargin = 10;
-    const topMargin = 20;
-    const bottomMargin = 15;
+    const leftMargin = 50 * scale;
+    const rightMargin = 10 * scale;
+    const topMargin = 20 * scale;
+    const bottomMargin = 15 * scale;
 
     // Title
-    ctx.font = "bold 8px " + fontStack;
-    ctx.fillStyle = "#666";
+    ctx.font = "bold " + (7 * scale) + "px " + fontStack;
+    ctx.fillStyle = "#555";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(title.toUpperCase(), leftMargin, 5);
+    ctx.fillText(title.toUpperCase(), leftMargin, 5 * scale);
 
     const plotW = w - leftMargin - rightMargin;
     const plotH = h - topMargin - bottomMargin;
@@ -704,11 +716,20 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
 
     // Scaling
     let maxVal;
-    if (colorNegative) {
-        maxVal = Math.max(...data.map(v => Math.abs(v)));
-    } else {
-        maxVal = Math.max(...data);
+    let max1 = 0;
+    if (data.length > 0) {
+        if (colorNegative) {
+            max1 = Math.max(...data.map(v => Math.abs(v)));
+        } else {
+            max1 = Math.max(...data);
+        }
     }
+    let max2 = 0;
+    if (data2 && data2.length > 0) {
+        max2 = Math.max(...data2);
+    }
+    maxVal = Math.max(max1, max2);
+
     if (!isFinite(maxVal) || maxVal <= 1) maxVal = 10;
 
     const midY = colorNegative ? (topMargin + plotH / 2) : (topMargin + plotH);
@@ -716,7 +737,7 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
 
     // Grid & Axis
     ctx.strokeStyle = '#e4e4e7'; // Zinc-200
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 * scale;
     
     // Zero line
     ctx.beginPath(); 
@@ -739,17 +760,17 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
 
     // Labels
     ctx.fillStyle = "#666";
-    ctx.font = "7px " + fontStack;
+    ctx.font = (6.5 * scale) + "px " + fontStack;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
     if (colorNegative) {
-        ctx.fillText(maxVal.toFixed(0), leftMargin - 6, topMargin);
-        ctx.fillText('0', leftMargin - 6, midY);
-        ctx.fillText((-maxVal).toFixed(0), leftMargin - 6, h - bottomMargin);
+        ctx.fillText(maxVal.toFixed(0), leftMargin - 6 * scale, topMargin);
+        ctx.fillText('0', leftMargin - 6 * scale, midY);
+        ctx.fillText((-maxVal).toFixed(0), leftMargin - 6 * scale, h - bottomMargin);
     } else {
-        ctx.fillText(maxVal.toFixed(0), leftMargin - 6, topMargin);
-        ctx.fillText('0', leftMargin - 6, h - bottomMargin);
+        ctx.fillText(maxVal.toFixed(0), leftMargin - 6 * scale, topMargin);
+        ctx.fillText('0', leftMargin - 6 * scale, h - bottomMargin);
     }
 
     // Plot
@@ -769,7 +790,7 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
         // 1. Positive Area
         ctx.save();
         ctx.beginPath();
-        ctx.rect(leftMargin, topMargin - 2, plotW, midY - topMargin + 2);
+        ctx.rect(leftMargin, topMargin - 2 * scale, plotW, midY - topMargin + 2 * scale);
         ctx.clip();
         
         ctx.beginPath();
@@ -785,14 +806,14 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
         ctx.fill();
         
         ctx.strokeStyle = colorPositive.replace(/[\d.]+\)$/, '1)'); 
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * scale;
         ctx.stroke();
         ctx.restore();
 
         // 2. Negative Area
         ctx.save();
         ctx.beginPath();
-        ctx.rect(leftMargin, midY, plotW, h - bottomMargin - midY + 2);
+        ctx.rect(leftMargin, midY, plotW, h - bottomMargin - midY + 2 * scale);
         ctx.clip();
         
         ctx.beginPath();
@@ -808,7 +829,7 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
         ctx.fill();
         
         ctx.strokeStyle = colorNegative.replace(/[\d.]+\)$/, '1)');
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * scale;
         ctx.stroke();
         ctx.restore();
 
@@ -831,8 +852,29 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative) {
             else ctx.lineTo(pts[i].x, pts[i].y);
         }
         ctx.strokeStyle = colorPositive.replace(/[\d.]+\)$/, '1)');
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * scale;
         ctx.stroke();
+    }
+
+    if (data2 && data2.length > 1) {
+        ctx.beginPath();
+        for (let i = 0; i < data2.length; i++) {
+            const px = leftMargin + i * stepX;
+            const py = midY - (data2[i] * scaleY);
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = color2;
+        ctx.lineWidth = 2 * scale;
+        ctx.stroke();
+
+        // Label for current value of data2
+        const lastVal = data2[data2.length - 1];
+        const py = midY - (lastVal * scaleY);
+        ctx.fillStyle = color2.replace(/[\d.]+\)$/, '1)');
+        ctx.font = "bold " + (6.5 * scale) + "px " + fontStack;
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText(lastVal.toFixed(0), leftMargin - 6 * scale, py);
     }
 }
 
@@ -974,7 +1016,7 @@ function updatePhysicsState(dtOverride) {
         state.thrustHistory.push(phys.thrust);
         if (state.thrustHistory.length > 1000) state.thrustHistory.shift();
         
-        state.powerHistory.push(phys.power);
+        state.powerHistory.push(phys.rawPower);
         if (state.powerHistory.length > 1000) state.powerHistory.shift();
         
         // Calculate window (2 cycles) for smoothing
@@ -982,17 +1024,25 @@ function updatePhysicsState(dtOverride) {
         const samplesPerCycle = Math.max(1, cyclePeriod / state.dt);
         const windowSize = Math.ceil(samplesPerCycle * 2);
         
-        // Power (Normalized)
+        // Power (Normalized & Average)
         let sumFourthPower = 0;
+        let sumPower = 0;
         const start = Math.max(0, state.powerHistory.length - windowSize);
         const count = state.powerHistory.length - start;
         for (let i = state.powerHistory.length - 1; i >= start; i--) {
-            sumFourthPower += Math.pow(state.powerHistory[i], 4);
+            // Double Check: Ensure we only calculate positive work.
+            // Clamp negative values (braking/absorbing) to 0 before averaging.
+            const val = Math.max(0, state.powerHistory[i]);
+            sumFourthPower += Math.pow(val, 4);
+            sumPower += val;
         }
         const avgPower = (count > 0) ? Math.pow(sumFourthPower / count, 0.25) : 0;
+        const arithmeticAvgPower = (count > 0) ? sumPower / count : 0;
 
         state.avgPowerHistory.push(avgPower);
         if (state.avgPowerHistory.length > 1000) state.avgPowerHistory.shift();
+        state.arithmeticAvgPowerHistory.push(arithmeticAvgPower);
+        if (state.arithmeticAvgPowerHistory.length > 1000) state.arithmeticAvgPowerHistory.shift();
 
         // Average Thrust (Windowed)
         let thrustSum = 0;
@@ -1027,17 +1077,18 @@ function updatePhysicsState(dtOverride) {
     
     // Get the most recent averages for the UI display
     const currentAvgPower = state.avgPowerHistory.length > 0 ? state.avgPowerHistory[state.avgPowerHistory.length - 1] : 0;
+    const currentArithmeticAvgPower = state.arithmeticAvgPowerHistory.length > 0 ? state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length - 1] : 0;
     const currentAvgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length - 1] : 0;
     const currentAvgLift = state.avgLiftHistory.length > 0 ? state.avgLiftHistory[state.avgLiftHistory.length - 1] : 0;
 
     // Calculate smooth physics for rendering (interpolate time using the remainder)
     const smoothPhys = calculatePhysics(state.t + state.historyTimer);
 
-    return { phys: smoothPhys, avgPower: currentAvgPower, avgThrust: currentAvgThrust, avgLift: currentAvgLift };
+    return { phys: smoothPhys, avgPower: currentAvgPower, arithmeticAvgPower: currentArithmeticAvgPower, avgThrust: currentAvgThrust, avgLift: currentAvgLift };
 }
 
 function render(data) {
-    const { phys, avgPower, avgThrust, avgLift } = data;
+    const { phys, avgPower, arithmeticAvgPower, avgThrust, avgLift } = data;
 
     // UI
     ui.time.textContent = state.t.toFixed(2);
@@ -1048,6 +1099,7 @@ function render(data) {
     ui.aoa.textContent = (phys.alpha * 180 / Math.PI).toFixed(1);
 
     ui.watts.textContent = phys.power.toFixed(0);
+    ui.arithAvgWatts.textContent = arithmeticAvgPower.toFixed(0);
     ui.avgWatts.textContent = avgPower.toFixed(0);
     
     // Canvas
@@ -1207,8 +1259,8 @@ function render(data) {
     // Graphs
     drawSimpleGraph(ctxLift, state.liftHistory, "Vertical Lift (N)", "rgba(59, 130, 246, 0.5)", "rgba(239, 68, 68, 0.5)");
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
-    drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", null);
-    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Normalized Power (W)", "rgba(249, 115, 22, 0.5)", null);
+    drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(168, 85, 247, 0.5)");
+    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Norm (Org) vs Avg (Blu) Power (W)", "rgba(249, 115, 22, 0.5)", null, state.arithmeticAvgPowerHistory, "rgba(59, 130, 246, 0.8)");
 
     // Update avg lift status bar
     const weight = CONFIG.mass * CONFIG.g;
@@ -1277,7 +1329,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     
     // Clear history for clean restart
-    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = [];
 });
 
 document.getElementById('btn-replay').addEventListener('click', () => {
@@ -1287,12 +1339,13 @@ document.getElementById('btn-replay').addEventListener('click', () => {
     state.thrustHistory = [];
     state.powerHistory = [];
     state.avgPowerHistory = [];
+    state.arithmeticAvgPowerHistory = [];
     state.avgThrustHistory = [];
     state.avgLiftHistory = [];
     state.pathX = [];
     state.pathZ = [];
     state.paused = false;
-    render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0, avgLift: 0 });
+    render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0 });
 });
 
 document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
@@ -1312,6 +1365,7 @@ window.addEventListener('keydown', (e) => {
                 state.thrustHistory.pop();
                 state.powerHistory.pop();
                 state.avgPowerHistory.pop();
+                state.arithmeticAvgPowerHistory.pop();
                 state.avgThrustHistory.pop();
                 state.avgLiftHistory.pop();
                 state.pathX.pop();
@@ -1323,6 +1377,7 @@ window.addEventListener('keydown', (e) => {
                 render({ 
                     phys: calculatePhysics(state.t), 
                     avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
+                    arithmeticAvgPower: state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length-1] || 0,
                     avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0,
                     avgLift: state.avgLiftHistory[state.avgLiftHistory.length-1] || 0
                 });
@@ -1349,7 +1404,7 @@ function loop(timestamp) {
     requestAnimationFrame(loop);
 }
 
-render({ phys: calculatePhysics(0), avgPower: 0, avgThrust: 0, avgLift: 0 });
+render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0 });
 loop();
 
 </script>
