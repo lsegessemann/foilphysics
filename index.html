@@ -418,52 +418,62 @@
         <details id="readme-dropdown">
             <summary>Documentation & About</summary>
             <div class="readme-content">
-                <h1>foilphysics V1 - the simplest model</h1>
-                <h2>Interactive Pump Foil Simulator</h2>
+                <h2>Physics Model</h2>
+                <p>The simulation uses a custom quasi-steady solver that iterates through time steps (<i>dt</i>) to calculate forces and rider power.</p>
 
-                <p><strong>Project Overview:</strong></p>
-                <p>This project is a standalone, browser-based physics simulator designed to visualize and understand the mechanics of pump foiling. 
-                It models the hydrodynamics of a hydrofoil wing undergoing a pumping motion and calculates the resulting forces, thrust, and rider power requirements in real-time.
-                You can run the simulator directly in your browser here: <a href="https://luciensegessemann-ops.github.io/foilphysics/" target="_blank">Live Demo</a></p>
+                <h3>1. Kinematics (Motion)</h3>
+                <p>The rider's vertical motion (<strong>Heave</strong>) and the board's angle (<strong>Pitch</strong>) are driven by sinusoidal functions, linked by a configurable <strong>Phase Shift</strong>.</p>
 
-                <p>The simulator provides an interactive playground for riders, engineers, and enthusiasts to experiment with different foil setups (wing area, aspect ratio) and pumping techniques (frequency, amplitude, timing) to see how they affect efficiency and acceleration.</p>
-
-                <p><strong>Simplifications</strong></p>
                 <ul>
-                    <li>All forces are modelled on the front wing directly, which is assumed to be rigid</li>
-                    <li>Frontwing has a symmetrical profil</li>
-                    <li>Rear wing / stabilizer is neglected, steady state pumping motion assumed</li>
-                    <li>The stickfigure is only there for your entertainment</li>
+                    <li><strong>Frequency:</strong> <i>&omega; = 2&pi;f</i></li>
+                    <li><strong>Vertical Position (<i>z</i>):</strong> <i>z(t) = A cos(&omega;t)</i></li>
+                    <li><strong>Vertical Velocity (<i>v<sub>z</sub></i>):</strong> <i>v<sub>z</sub>(t) = -A &omega; sin(&omega;t)</i></li>
+                    <li><strong>Vertical Acceleration (<i>a<sub>z</sub></i>):</strong> <i>a<sub>z</sub>(t) = -A &omega;<sup>2</sup> cos(&omega;t)</i></li>
+                    <li><strong>Pitch Angle (<i>&theta;</i>):</strong> <i>&theta;(t) = &theta;<sub>trim</sub> + &theta;<sub>amp</sub> cos(&omega;t + &phi;)</i><br>
+                    <em>(Where &phi; is the Phase Shift)</em></li>
                 </ul>
 
-                <p><strong>Key Features</strong></p>
+                <h3>2. Aerodynamics (Fluid Forces)</h3>
+                <p>Lift and Drag are calculated using <strong>Thin Airfoil Theory</strong>, corrected for a finite Aspect Ratio (<i>AR</i>).</p>
+
                 <ul>
-                    <li>Physics Engine: Custom 2D quasi-steady simulation loop that calculates Lift, Drag, Rider Inertia, and Net Thrust based on user inputs.</li>
-                    <li>Realistic Fluid Dynamics: Includes finite wing corrections for Aspect Ratio, affecting both the Lift Slope and Induced Drag (Drag Polar).</li>
-                    <li>Real-Time Visualization: Vector Display: Live arrows showing Lift (Blue), Drag (Red), Rider Input (Orange), and Net Thrust (Cyan).</li>
-                    <li>Live Telemetry: Digital readout of Speed, Angle of Attack (AoA), Pitch, and Instantaneous/Average Wattage.</li>
-                    <li>Dynamic Graphs: Scrolling history charts for Net Thrust (Green/Red zones for accel/decel) and Rider Power.</li>
-                    <li>Interactive Controls: Adjust Pumping Frequency, Amplitude, and Phase Shift (timing between heave (stomp) and pitch).</li>
-                    <li>Gear Setup: Modify Wing Area, Aspect Ratio, Foil Mass, and Pitch Trim.</li>
-                    <li>Conditions: Set the simulated Cruise Speed.</li>
-                    <li>Visual Enhancements: Toggles for vector visibility, foil assembly rendering, and scaling options.</li>
+                    <li><strong>Flight Path Angle (<i>&gamma;</i>):</strong> <i>&gamma; = arctan(v<sub>z</sub> / U)</i></li>
+                    <li><strong>Effective Angle of Attack (<i>&alpha;</i>):</strong> <i>&alpha; = &theta; - &gamma;</i></li>
+                    <li><strong>Lift Coefficient (<i>C<sub>L</sub></i>):</strong><br>
+                    <i>C<sub>L</sub> = (2 &pi; &alpha;) / (1 + 2/AR)</i></li>
+                    <li><strong>Drag Coefficient (<i>C<sub>D</sub></i>):</strong><br>
+                    <i>C<sub>D</sub> = C<sub>D0</sub> + k C<sub>L</sub><sup>2</sup></i> &emsp; where &emsp; <i>k &approx; 1 / (&pi; AR)</i></li>
+                    <li><strong>Hydrodynamic Force (Vertical Component):</strong><br>
+                    <i>F<sub>hydro_z</sub> = L cos(&gamma;) - D sin(&gamma;)</i></li>
                 </ul>
 
-                <p><strong>Technical Details</strong></p>
+                <h3>3. Dynamics (Two-Mass Model)</h3>
+                <p>To simulate high-frequency pumping accurately, the system is split into a <strong>Fixed Mass</strong> (Torso) and a <strong>Moving Mass</strong> (Legs + Board). This prevents the "zero power" error seen in single-point mass models when acceleration exceeds gravity.</p>
+
                 <ul>
-                    <li>Tech Stack: Pure HTML5 Canvas & Vanilla JavaScript (ES6). No external dependencies or libraries.</li>
+                    <li><strong>Moving Mass (<i>m<sub>moving</sub></i>):</strong><br>
+                    <i>m<sub>moving</sub> = m<sub>board</sub> + (m<sub>rider</sub> &times; SwingRatio)</i><br>
+                    <em>(Default SwingRatio is 0.4, representing the active mass of the legs)</em></li>
+                    <li><strong>Inertial Requirement:</strong><br>
+                    The force required to accelerate the legs and board:<br>
+                    <i>F<sub>inertia</sub> = m<sub>moving</sub> (g + a<sub>z</sub>)</i></li>
+                    <li><strong>Rider Force (<i>F<sub>rider</sub></i>):</strong><br>
+                    The rider must push down to bridge the gap between the Water Force and the Inertial Force.<br>
+                    <i>F<sub>req</sub> = F<sub>hydro_z</sub> - F<sub>inertia</sub></i><br>
+                    <i>F<sub>rider</sub> = max(0, F<sub>req</sub>)</i><br>
+                    <em>(Clamped to 0 to simulate unstrapped riding—the rider cannot pull the board up).</em></li>
                 </ul>
 
-                <p><strong>Physics Model</strong></p>
+                <h3>4. Power Calculation</h3>
+                <p>Power is calculated as the product of the Rider's Force and the Leg Extension Velocity.</p>
+
                 <ul>
-                    <li>Kinematics: Sinusoidal motion for Heave (<i>z</i>) and Pitch (<i>&theta;</i>) that can be shifted in phase.</li>
-                    <li>Hydrodynamics: Thin airfoil theory modified for finite Aspect Ratio (<i>C<sub>L</sub> = 2&pi;&alpha; / (1 + 2/AR)</i>) and induced drag (<i>C<sub>D</sub> = C<sub>D0</sub> + kC<sub>L</sub><sup>2</sup></i>).</li>
-                    <li>Dynamics: Solves for required Rider Force (<i>F<sub>rider</sub></i>) by balancing Inertial forces against Hydrodynamic Lift (<i>F<sub>rider</sub> = F<sub>inertia</sub> - F<sub>hydro</sub></i>).</li>
+                    <li><strong>Extension Velocity:</strong> <i>v<sub>ext</sub> = -v<sub>z</sub></i> <em>(Positive when pushing down)</em></li>
+                    <li><strong>Instantaneous Power:</strong><br>
+                    <i>P<sub>inst</sub> = F<sub>rider</sub> &times; v<sub>ext</sub></i><br>
+                    <i>P = max(0, P<sub>inst</sub>)</i><br>
+                    <em>(Negative power is clamped to 0, assuming the rider does not regenerate energy from the board pushing back).</em></li>
                 </ul>
-
-                <p><strong>File Structure:</strong> Single-file index.html containing CSS, HTML layout, and the JS simulation engine.</p>
-
-                <p><strong>How to Run Locally:</strong> Click on live Demo above or simply download the index.html file and open it in any modern web browser (Chrome, Firefox, Safari). No server or installation is required.</p>
             </div>
         </details>
     </div>

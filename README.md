@@ -1,51 +1,49 @@
-# foilphysics V1 - the simplest model
-## Interactive Pump Foil Simulator
+## Physics Model
 
-**Project Overview:**
+The simulation uses a custom quasi-steady solver that iterates through time steps ($dt$) to calculate forces and rider power.
 
-This project is a standalone, browser-based physics simulator designed to visualize and understand the mechanics of pump foiling. 
-It models the hydrodynamics of a hydrofoil wing undergoing a pumping motion and calculates the resulting forces, thrust, and rider power requirements in real-time.
-You can run the simulator directly in your browser here:[Live Demo](https://luciensegessemann-ops.github.io/foilphysics/)
+### 1. Kinematics (Motion)
+The rider's vertical motion (**Heave**) and the board's angle (**Pitch**) are driven by sinusoidal functions, linked by a configurable **Phase Shift**.
 
-The simulator provides an interactive playground for riders, engineers, and enthusiasts to experiment with different foil setups (wing area, aspect ratio) and pumping techniques (frequency, amplitude, timing) to see how they affect efficiency and acceleration.
+- **Frequency:** $\omega = 2\pi f$
+- **Vertical Position ($z$):** $z(t) = A \cos(\omega t)$
+- **Vertical Velocity ($v_z$):** $v_z(t) = -A \omega \sin(\omega t)$
+- **Vertical Acceleration ($a_z$):** $a_z(t) = -A \omega^2 \cos(\omega t)$
+- **Pitch Angle ($\theta$):** $\theta(t) = \theta_{trim} + \theta_{amp} \cos(\omega t + \phi)$
+  *(Where $\phi$ is the Phase Shift)*
 
-**Simplifications**
-- All forces are modelled on the front wing directly, which is assumed to be rigid
-- Frontwing has a symmetrical profil
-- Rear wing / stabilizer is neglected, steady state pumping motion assumed
-- The stickfigure is only there for your entertainment
+### 2. Aerodynamics (Fluid Forces)
+Lift and Drag are calculated using **Thin Airfoil Theory**, corrected for a finite Aspect Ratio ($AR$).
 
+- **Flight Path Angle ($\gamma$):** $\gamma = \arctan(v_z / U)$
+- **Effective Angle of Attack ($\alpha$):** $\alpha = \theta - \gamma$
+- **Lift Coefficient ($C_L$):**
+  $$C_L = \frac{2 \pi \alpha}{1 + 2/AR}$$
+- **Drag Coefficient ($C_D$):**
+  $$C_D = C_{D0} + k C_L^2 \quad \text{where} \quad k \approx \frac{1}{\pi AR}$$
+- **Hydrodynamic Force (Vertical Component):**
+  $$F_{hydro\_z} = L \cos(\gamma) - D \sin(\gamma)$$
 
-**Key Features**
+### 3. Dynamics (Two-Mass Model)
+To simulate high-frequency pumping accurately, the system is split into a **Fixed Mass** (Torso) and a **Moving Mass** (Legs + Board). This prevents the "zero power" error seen in single-point mass models when acceleration exceeds gravity.
 
-- Physics Engine: Custom 2D quasi-steady simulation loop that calculates Lift, Drag, Rider Inertia, and Net Thrust based on user inputs.
+- **Moving Mass ($m_{moving}$):**
+  $$m_{moving} = m_{board} + (m_{rider} \times \text{SwingRatio})$$
+  *(Default SwingRatio is 0.4, representing the active mass of the legs)*
+- **Inertial Requirement:**
+  The force required to accelerate the legs and board:
+  $$F_{inertia} = m_{moving} (g + a_z)$$
+- **Rider Force ($F_{rider}$):**
+  The rider must push down to bridge the gap between the Water Force and the Inertial Force.
+  $$F_{req} = F_{hydro\_z} - F_{inertia}$$
+  $$F_{rider} = \max(0, F_{req})$$
+  *(Clamped to 0 to simulate unstrapped riding—the rider cannot pull the board up).*
 
-- Realistic Fluid Dynamics: Includes finite wing corrections for Aspect Ratio, affecting both the Lift Slope and Induced Drag (Drag Polar).
+### 4. Power Calculation
+Power is calculated as the product of the Rider's Force and the Leg Extension Velocity.
 
-- Real-Time Visualization:Vector Display: Live arrows showing Lift (Blue), Drag (Red), Rider Input (Orange), and Net Thrust (Cyan).
-
-- Live Telemetry: Digital readout of Speed, Angle of Attack (AoA), Pitch, and Instantaneous/Average Wattage.
-
-- Dynamic Graphs: Scrolling history charts for Net Thrust (Green/Red zones for accel/decel) and Rider Power.
-
-- Interactive Controls: Adjust Pumping Frequency, Amplitude, and Phase Shift (timing between heave (stomp) and pitch).
-
-- Gear Setup: Modify Wing Area, Aspect Ratio, Foil Mass, and Pitch Trim.
-
-- Conditions: Set the simulated Cruise Speed.
-
-- Visual Enhancements: Toggles for vector visibility, foil assembly rendering, and scaling options.
-
-Technical Details 
-- Tech Stack: Pure HTML5 Canvas & Vanilla JavaScript (ES6). No external dependencies or libraries.
-
-**Physics Model**
-- Kinematics: Sinusoidal motion for Heave ($z$) and Pitch ($\theta$) that can be shifted in phase.
-
-- Hydrodynamics: Thin airfoil theory modified for finite Aspect Ratio ($C_L = \frac{2\pi\alpha}{1 + 2/AR}$) and induced drag ($C_D = C_{D0} + kC_L^2$).
-
-- Dynamics: Solves for required Rider Force ($F_{rider}$) by balancing Inertial forces against Hydrodynamic Lift ($F_{rider} = F_{inertia}-F_{hydro}).
-
-File Structure: Single-file index.html containing CSS, HTML layout, and the JS simulation engine.
-
-How to Run Locally: Click on live Demo above or simply download the index.html file and open it in any modern web browser (Chrome, Firefox, Safari). No server or installation is required.
+- **Extension Velocity:** $v_{ext} = -v_z$ *(Positive when pushing down)*
+- **Instantaneous Power:**
+  $$P_{inst} = F_{rider} \times v_{ext}$$
+  $$P = \max(0, P_{inst})$$
+  *(Negative power is clamped to 0, assuming the rider does not regenerate energy from the board pushing back).*
