@@ -264,7 +264,7 @@
                 </span>: <span id="val-aoa">0.0</span>°<br>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Inst. Power: <span id="val-watts">0</span> W<br>
-                Avg. Power: <span id="val-avg-watts">0</span> W
+                Norm. Power: <span id="val-avg-watts">0</span> W
             </div>
         </div>
 
@@ -503,20 +503,31 @@ function calculatePhysics(t) {
     const Lx = -L_mag * Math.sin(gamma); const Lz = L_mag * Math.cos(gamma);
     const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
     
-    // 5. Rider Force & Power
-    // F_rider_action = F_Inertia - F_Hydro (Force rider exerts on board)
+  // 5. Rider Force & Power (UPDATED)
+    // ---------------------------------------------------------
+    // F_inertia: The total vertical force required to move the mass (m*g + m*a)
     const F_inertia = CONFIG.mass * (CONFIG.g + az);
-    const F_hydro_z = Lz + Dz;
-    // The force the rider exerts on the board is purely inertial (supporting their own weight + acceleration)
-    // This force is always downwards (positive magnitude in our calculation)
-    const F_rider_action = F_inertia;
     
-    // Power = Force * Velocity (Force is F_rider_action, Velocity is vz)
-    // F_rider_action > 0 means Rider is pushing DOWN.
-    // vz < 0 means Board is moving DOWN.
-    // Power is generated when pushing down while moving down.
+    // F_hydro_z: The vertical force provided by the water (Lift + vertical Drag)
+    const F_hydro_z = Lz + Dz;
+    
+    // F_rider_action: The remaining force the rider must supply.
+    // Logic: Required Force = Water Force + Rider Force
+    // Therefore: Rider Force = Required Force - Water Force
+    const F_r = F_inertia - F_hydro_z;
+    
+    // CRITICAL FIX: If the foil lifts more than the rider weighs (F_req < 0),
+    // the rider is just being carried. They cannot "pull" the board down 
+    // to generate power. Clamp force to 0.
+    const F_rider_action = Math.max(0, F_r);
+    
+    
+    // Power = Force * Velocity
+    // We clamp to 0 because we assume the rider cannot "regenerate" energy 
+    // when the board pushes them up (eccentric phase).
     let power = F_rider_action * (-vz);
     power = Math.max(0, power);
+    // ---------------------------------------------------------
 
     // 6. Vector Components
     const Rx = 0; 
@@ -855,17 +866,18 @@ function updatePhysicsState(dtOverride) {
         state.powerHistory.push(phys.power);
         if (state.powerHistory.length > 300) state.powerHistory.shift();
         
-        // Calculate and store average power (over a 4-cycle window)
+        // Calculate and store normalized power (NP) over a 4-cycle window
         const cyclePeriod = 1.0 / state.freq;
         const samplesPerCycle = Math.max(1, cyclePeriod / state.dt);
         const windowSize = Math.ceil(samplesPerCycle * 4);
         
-        let powerSum = 0;
+        let sumFourthPower = 0;
         const start = Math.max(0, state.powerHistory.length - windowSize);
+        const count = state.powerHistory.length - start;
         for (let i = state.powerHistory.length - 1; i >= start; i--) {
-            powerSum += state.powerHistory[i];
+            sumFourthPower += Math.pow(state.powerHistory[i], 4);
         }
-        const avgPower = (state.powerHistory.length > start) ? powerSum / (state.powerHistory.length - start) : 0;
+        const avgPower = (count > 0) ? Math.pow(sumFourthPower / count, 0.25) : 0;
 
         state.avgPowerHistory.push(avgPower);
         if (state.avgPowerHistory.length > 300) state.avgPowerHistory.shift();
@@ -984,7 +996,7 @@ function render(data) {
 
         // Color change for Power Phase
         // Light up when pushing down (Rz < 0) and accelerating downwards (az < 0)
-        const isPowerPhase = (phys.Rz < 0 && phys.az < 0);
+        const isPowerPhase = (phys.power>0);
         const riderColor = isPowerPhase ? '#f97316' : '#222'; // Orange-500 if powered
 
         ctx.strokeStyle = riderColor; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -1065,8 +1077,8 @@ function render(data) {
     // Graphs
     drawSimpleGraph(ctxLift, state.liftHistory, "Vertical Lift (N)", "rgba(59, 130, 246, 0.5)", "rgba(239, 68, 68, 0.5)");
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
-    drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(156, 163, 175, 0.5)");
-    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Avg Power (W)", "rgba(249, 115, 22, 0.5)", null);
+    drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", null);
+    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Rider Normalized Power (W)", "rgba(249, 115, 22, 0.5)", null);
 
     // Update avg lift status bar
     const avgLift = state.liftHistory.reduce((a, b) => a + b, 0) / (state.liftHistory.length || 1);
