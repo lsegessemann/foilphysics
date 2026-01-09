@@ -242,6 +242,24 @@
             opacity: 1;
         }
 
+        #slowmo-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.90);
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #555;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
         /* Documentation Dropdown */
         details {
             background-color: white;
@@ -319,6 +337,10 @@
                 Avg. Power: <span id="val-arith-avg-watts">0</span> W<br>
                 Norm. Power: <span id="val-avg-watts">0</span> W
             </div>
+            <div id="slowmo-controls">
+                <input type="checkbox" id="chk-slowmo" style="cursor: pointer;">
+                <label for="chk-slowmo" style="cursor: pointer; user-select: none;">Slow Motion (1/5x)</label>
+            </div>
         </div>
 
         <div id="dashboard-row">
@@ -391,10 +413,6 @@
             <div class="control-group" title="Zoom level for the foil visualization.">
                 <label>Visualization Scale: <span id="disp-size">0.40</span></label>
                 <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
-            </div>
-            <div class="control-group" style="flex-direction: row; align-items: center; gap: 6px; margin-top: 4px;">
-                <input type="checkbox" id="chk-slowmo" style="height: auto;">
-                <label for="chk-slowmo" style="margin: 0; cursor: pointer;">Slow Motion (1/5x)</label>
             </div>
             
             <div style="display: flex; gap: 8px; margin-top: 5px;">
