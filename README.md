@@ -28,7 +28,7 @@ The simulator provides an interactive playground for riders, engineers, and enth
 
 - Dynamic Graphs: Scrolling history charts for Net Thrust (Green/Red zones for accel/decel) and Rider Power.
 
-- Interactive Controls:Rider Input: Adjust Pumping Frequency, Amplitude, and Phase Shift (timing between heave (stomp) and pitch).
+- Interactive Controls: Adjust Pumping Frequency, Amplitude, and Phase Shift (timing between heave (stomp) and pitch).
 
 - Gear Setup: Modify Wing Area, Aspect Ratio, Foil Mass, and Pitch Trim.
 
@@ -36,15 +36,15 @@ The simulator provides an interactive playground for riders, engineers, and enth
 
 - Visual Enhancements: Toggles for vector visibility, foil assembly rendering, and scaling options.
 
-Technical Details Tech Stack: Pure HTML5 Canvas & Vanilla JavaScript (ES6). No external dependencies or libraries.
+Technical Details 
+- Tech Stack: Pure HTML5 Canvas & Vanilla JavaScript (ES6). No external dependencies or libraries.
 
 **Physics Model**
-- Kinematics: Sinusoidal motion for Heave ($z$) and Pitch ($\theta$).
+- Kinematics: Sinusoidal motion for Heave ($z$) and Pitch ($\theta$) that can be shifted in phase.
 
 - Hydrodynamics: Thin airfoil theory modified for finite Aspect Ratio ($C_L = \frac{2\pi\alpha}{1 + 2/AR}$) and induced drag ($C_D = C_{D0} + kC_L^2$).
 
-- Dynamics: Solves for required Rider Force ($F_{rider}$) by balancing Inertial forces against Hydrodynamic Lift ($F_{rider} = F_{hydro} - mg-ma$).
-
+- Dynamics: Solves for required Rider Force ($F_{rider}$) by balancing Inertial forces against Hydrodynamic Lift ($F_{rider} = F_{inertia}-F_{hydro}).
 
 File Structure: Single-file index.html containing CSS, HTML layout, and the JS simulation engine.
 
