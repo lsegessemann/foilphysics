@@ -1091,14 +1091,18 @@ function render(data) {
     // Update avg thrust status bar
     ui.avgThrust.textContent = avgThrust.toFixed(0);
     const statusEl = document.getElementById('avgThrustStatus');
-    if (avgThrust >= 0) {
-        statusEl.style.backgroundColor = '#c8e6c9';
-        statusEl.style.color = '#1b5e20';
-        statusEl.textContent = 'Avg Thrust: Accelerating : ' + avgThrust.toFixed(0) + ' N';
-    } else {
+    if (avgThrust < -2) {
         statusEl.style.backgroundColor = '#ffcdd2';
         statusEl.style.color = '#b71c1c';
         statusEl.textContent = 'Avg Thrust: Decelerating : ' + avgThrust.toFixed(0) + ' N';
+    } else if (avgThrust > 2) {
+        statusEl.style.backgroundColor = '#bbdefb';
+        statusEl.style.color = '#0d47a1';
+        statusEl.textContent = 'Avg Thrust: Accelerating : ' + avgThrust.toFixed(0) + ' N';
+    } else {
+        statusEl.style.backgroundColor = '#c8e6c9';
+        statusEl.style.color = '#1b5e20';
+        statusEl.textContent = 'Avg Thrust: On Target : ' + avgThrust.toFixed(0) + ' N';
     }
 }
 
