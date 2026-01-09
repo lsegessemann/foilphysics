@@ -293,28 +293,28 @@
             <div id="controls">
             <div class="control-group">
             <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
-                <label>Frequency: <span id="disp-freq">0.8</span> Hz</label>
-                <input type="range" id="in-freq" min="0.01" max="2.0" step="0.01" value="0.8">
+                <label>Frequency: <span id="disp-freq">1.2</span> Hz</label>
+                <input type="range" id="in-freq" min="0.01" max="2.0" step="0.01" value="1.2">
             </div>
             <div class="control-group">
             <div class="control-group" title="Vertical range of motion for the foil path.">
-                <label>Amplitude: <span id="disp-amp">0.22</span> m</label>
-                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.22">
+                <label>Amplitude: <span id="disp-amp">0.20</span> m</label>
+                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.20">
             </div>
             <div class="control-group">
             <div class="control-group" title="Forward velocity of the rider.">
-                <label>Speed: <span id="disp-speed">15.0</span> km/h</label>
-                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="15.0">
+                <label>Speed: <span id="disp-speed">18.0</span> km/h</label>
+                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="18.0">
             </div>
             <div class="control-group">
             <div class="control-group" title="Total weight of rider plus gear.">
-                <label>Mass: <span id="disp-mass">80</span> kg</label>
-                <input type="range" id="in-mass" min="40" max="120" step="1" value="80">
+                <label>Mass: <span id="disp-mass">70</span> kg</label>
+                <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
             </div>
             <div class="control-group">
             <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
-                <label>Wing Area: <span id="disp-area">1250</span> cm²</label>
-                <input type="range" id="in-area" min="600" max="2000" step="50" value="1250">
+                <label>Wing Area: <span id="disp-area">1500</span> cm²</label>
+                <input type="range" id="in-area" min="600" max="2000" step="50" value="1500">
             </div>
             <div class="control-group">
             <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
@@ -323,13 +323,13 @@
             </div>
             <div class="control-group">
             <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
-                <label>Drag Coeff (Cd0): <span id="disp-cd0">0.020</span></label>
-                <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.020">
+                <label>Drag Coeff (Cd0): <span id="disp-cd0">0.015</span></label>
+                <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.015">
             </div>
             <div class="control-group">
             <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
-                <label>Frontwing Pitch Trim: <span id="disp-trim">0.0</span>°</label>
-                <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="0.0">
+                <label>Frontwing Pitch Trim: <span id="disp-trim">3.5</span>°</label>
+                <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="3.5">
             </div>
             <div class="control-group">
             <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
@@ -376,11 +376,11 @@
 
 // --- CONFIGURATION ---
 const CONFIG = {
-    mass: 80.0,          // Total mass (Rider + Board) in kg
-    U: 15.0 / 3.6,       // Forward speed in m/s (converted from km/h)
+    mass: 70.0,          // Total mass (Rider + Board) in kg
+    U: 18.0 / 3.6,       // Forward speed in m/s (converted from km/h)
     rho: 1000.0,         // Water density in kg/m³
-    S: 0.125,            // Wing Area in m² (1250 cm²)
-    Cd0: 0.02,           // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
+    S: 0.15,             // Wing Area in m² (1500 cm²)
+    Cd0: 0.015,          // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
     k: 0.05,             // Induced Drag Factor (recalculated based on AR)
     g: 9.81,             // Gravity (m/s²)
     visual_size_m: 0.4,  // Visual scale for foil chord length
@@ -389,7 +389,7 @@ const CONFIG = {
     AR: 13.0,            // Aspect Ratio (Span² / Area)
     
     // Adjustable Parameters
-    pitch_trim_deg: 0.0,    // Base pitch angle in degrees
+    pitch_trim_deg: 3.5,    // Base pitch angle in degrees
     phase_shift_deg: 90.0   // Phase difference between Heave and Pitch
 };
 
@@ -403,8 +403,8 @@ let state = {
     historyTimer: 0,
     paused: false,
     slowMotion: false,
-    freq: 0.8,
-    heave_amp: 0.22,
+    freq: 1.2,
+    heave_amp: 0.20,
     pathX: [],
     pathZ: [],
     liftHistory: [],
@@ -1116,14 +1116,14 @@ document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.ph
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
 
 document.getElementById('btn-reset').addEventListener('click', () => {
-    state.freq = 0.8; document.getElementById('in-freq').value = 0.8; ui.dispFreq.textContent = "0.8";
-    state.heave_amp = 0.22; document.getElementById('in-amp').value = 0.22; ui.dispAmp.textContent = "0.22";
-    CONFIG.U = 15.0 / 3.6; document.getElementById('in-speed').value = 15.0; ui.dispSpeed.textContent = "15.0";
-    CONFIG.mass = 80.0; document.getElementById('in-mass').value = 80; ui.dispMass.textContent = "80";
-    CONFIG.S = 0.125; document.getElementById('in-area').value = 1250; ui.dispArea.textContent = "1250";
+    state.freq = 1.2; document.getElementById('in-freq').value = 1.2; ui.dispFreq.textContent = "1.2";
+    state.heave_amp = 0.20; document.getElementById('in-amp').value = 0.20; ui.dispAmp.textContent = "0.20";
+    CONFIG.U = 18.0 / 3.6; document.getElementById('in-speed').value = 18.0; ui.dispSpeed.textContent = "18.0";
+    CONFIG.mass = 70.0; document.getElementById('in-mass').value = 70; ui.dispMass.textContent = "70";
+    CONFIG.S = 0.15; document.getElementById('in-area').value = 1500; ui.dispArea.textContent = "1500";
     CONFIG.AR = 13.0; document.getElementById('in-ar').value = 13.0; ui.dispAr.textContent = "13.0";
-    CONFIG.Cd0 = 0.02; document.getElementById('in-cd0').value = 0.02; ui.dispCd0.textContent = "0.020";
-    CONFIG.pitch_trim_deg = 0.0; document.getElementById('in-trim').value = 0.0; ui.dispTrim.textContent = "0.0";
+    CONFIG.Cd0 = 0.015; document.getElementById('in-cd0').value = 0.015; ui.dispCd0.textContent = "0.015";
+    CONFIG.pitch_trim_deg = 3.5; document.getElementById('in-trim').value = 3.5; ui.dispTrim.textContent = "3.5";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
