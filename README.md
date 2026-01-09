@@ -1,4 +1,4 @@
-# foilphysics
+# foilphysics V1 - the simplest model
 ## Interactive Pump Foil Simulator
 
 **Project Overview:**
