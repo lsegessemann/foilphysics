@@ -2,6 +2,13 @@
 
 The simulation uses a custom quasi-steady solver that iterates through time steps ($dt$) to calculate forces and rider power.
 
+### Simplifications
+- All forces act directly on the front wing, which is assumed to be rigid
+- The indication bars for average lift and thrust indicate whether the pumping motion is actually viable for the selected speed. If they're not balanced / on target, the selected parameters are not in steady state.
+- There is no stabilizer/rear wing modelled
+- The stickfigure is only there for your entertainment - the trajectory of the foil is defined by the frequency and amplitude input.
+
+
 ### 1. Kinematics (Motion)
 The rider's vertical motion (**Heave**) and the board's angle (**Pitch**) are driven by sinusoidal functions, linked by a configurable **Phase Shift**.
 
@@ -12,7 +19,7 @@ The rider's vertical motion (**Heave**) and the board's angle (**Pitch**) are dr
 - **Pitch Angle ($\theta$):** $\theta(t) = \theta_{trim} + \theta_{amp} \cos(\omega t + \phi)$
   *(Where $\phi$ is the Phase Shift)*
 
-### 2. Aerodynamics (Fluid Forces)
+### 2. Fluid Forces
 Lift and Drag are calculated using **Thin Airfoil Theory**, corrected for a finite Aspect Ratio ($AR$).
 
 - **Flight Path Angle ($\gamma$):** $\gamma = \arctan(v_z / U)$
