@@ -241,6 +241,58 @@
             visibility: visible;
             opacity: 1;
         }
+
+        /* Documentation Dropdown */
+        details {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0,0,0,0.05);
+            overflow: hidden;
+            width: 100%;
+            margin-top: 15px;
+            box-sizing: border-box;
+        }
+        summary {
+            padding: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: #fff;
+            font-size: 14px;
+            color: #333;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        summary::-webkit-details-marker {
+            display: none;
+        }
+        summary::after {
+            content: '+';
+            font-size: 18px;
+            font-weight: bold;
+            color: #666;
+        }
+        details[open] summary::after {
+            content: '-';
+        }
+        details[open] summary {
+            border-bottom: 1px solid #eee;
+        }
+        .readme-content {
+            padding: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #444;
+        }
+        .readme-content h1 { font-size: 18px; margin-top: 0; margin-bottom: 10px; color: #222; }
+        .readme-content h2 { font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #333; }
+        .readme-content p { margin-bottom: 10px; }
+        .readme-content ul { margin-bottom: 10px; padding-left: 20px; }
+        .readme-content li { margin-bottom: 4px; }
+        .readme-content a { color: #3b82f6; text-decoration: none; }
+        .readme-content a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -291,52 +343,42 @@
             </div>
             
             <div id="controls">
-            <div class="control-group">
             <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
                 <label>Frequency: <span id="disp-freq">1.2</span> Hz</label>
                 <input type="range" id="in-freq" min="0.01" max="2.0" step="0.01" value="1.2">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Vertical range of motion for the foil path.">
                 <label>Amplitude: <span id="disp-amp">0.20</span> m</label>
                 <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.20">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Forward velocity of the rider.">
                 <label>Speed: <span id="disp-speed">18.0</span> km/h</label>
                 <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="18.0">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Total weight of rider plus gear.">
                 <label>Mass: <span id="disp-mass">70</span> kg</label>
                 <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
                 <label>Wing Area: <span id="disp-area">1500</span> cm²</label>
                 <input type="range" id="in-area" min="600" max="2000" step="50" value="1500">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
                 <label>Aspect Ratio: <span id="disp-ar">13.0</span></label>
                 <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.0">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
                 <label>Drag Coeff (Cd0): <span id="disp-cd0">0.015</span></label>
                 <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.015">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
                 <label>Frontwing Pitch Trim: <span id="disp-trim">3.5</span>°</label>
                 <input type="range" id="in-trim" min="-5.0" max="10.0" step="0.5" value="3.5">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
                 <label>Phase Shift: <span id="disp-phase">90</span>°</label>
                 <input type="range" id="in-phase" min="0" max="180" step="5" value="90">
             </div>
-            <div class="control-group">
             <div class="control-group" title="Zoom level for the foil visualization.">
                 <label>Visualization Scale: <span id="disp-size">0.40</span></label>
                 <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
@@ -364,9 +406,61 @@
                 <div style="font-size: 9px; color: #555; margin-top: 5px;">
                     <kbd>SPACE</kbd> Pause
                 </div>
+            </div> <!-- End legend-container -->
+        </div> <!-- End controls -->
+        </div> <!-- End dashboard-row -->
+
+        <details id="readme-dropdown">
+            <summary>Documentation & About</summary>
+            <div class="readme-content">
+                <h1>foilphysics V1 - the simplest model</h1>
+                <h2>Interactive Pump Foil Simulator</h2>
+
+                <p><strong>Project Overview:</strong></p>
+                <p>This project is a standalone, browser-based physics simulator designed to visualize and understand the mechanics of pump foiling. 
+                It models the hydrodynamics of a hydrofoil wing undergoing a pumping motion and calculates the resulting forces, thrust, and rider power requirements in real-time.
+                You can run the simulator directly in your browser here: <a href="https://luciensegessemann-ops.github.io/foilphysics/" target="_blank">Live Demo</a></p>
+
+                <p>The simulator provides an interactive playground for riders, engineers, and enthusiasts to experiment with different foil setups (wing area, aspect ratio) and pumping techniques (frequency, amplitude, timing) to see how they affect efficiency and acceleration.</p>
+
+                <p><strong>Simplifications</strong></p>
+                <ul>
+                    <li>All forces are modelled on the front wing directly, which is assumed to be rigid</li>
+                    <li>Frontwing has a symmetrical profil</li>
+                    <li>Rear wing / stabilizer is neglected, steady state pumping motion assumed</li>
+                    <li>The stickfigure is only there for your entertainment</li>
+                </ul>
+
+                <p><strong>Key Features</strong></p>
+                <ul>
+                    <li>Physics Engine: Custom 2D quasi-steady simulation loop that calculates Lift, Drag, Rider Inertia, and Net Thrust based on user inputs.</li>
+                    <li>Realistic Fluid Dynamics: Includes finite wing corrections for Aspect Ratio, affecting both the Lift Slope and Induced Drag (Drag Polar).</li>
+                    <li>Real-Time Visualization: Vector Display: Live arrows showing Lift (Blue), Drag (Red), Rider Input (Orange), and Net Thrust (Cyan).</li>
+                    <li>Live Telemetry: Digital readout of Speed, Angle of Attack (AoA), Pitch, and Instantaneous/Average Wattage.</li>
+                    <li>Dynamic Graphs: Scrolling history charts for Net Thrust (Green/Red zones for accel/decel) and Rider Power.</li>
+                    <li>Interactive Controls: Adjust Pumping Frequency, Amplitude, and Phase Shift (timing between heave (stomp) and pitch).</li>
+                    <li>Gear Setup: Modify Wing Area, Aspect Ratio, Foil Mass, and Pitch Trim.</li>
+                    <li>Conditions: Set the simulated Cruise Speed.</li>
+                    <li>Visual Enhancements: Toggles for vector visibility, foil assembly rendering, and scaling options.</li>
+                </ul>
+
+                <p><strong>Technical Details</strong></p>
+                <ul>
+                    <li>Tech Stack: Pure HTML5 Canvas & Vanilla JavaScript (ES6). No external dependencies or libraries.</li>
+                </ul>
+
+                <p><strong>Physics Model</strong></p>
+                <ul>
+                    <li>Kinematics: Sinusoidal motion for Heave (<i>z</i>) and Pitch (<i>&theta;</i>) that can be shifted in phase.</li>
+                    <li>Hydrodynamics: Thin airfoil theory modified for finite Aspect Ratio (<i>C<sub>L</sub> = 2&pi;&alpha; / (1 + 2/AR)</i>) and induced drag (<i>C<sub>D</sub> = C<sub>D0</sub> + kC<sub>L</sub><sup>2</sup></i>).</li>
+                    <li>Dynamics: Solves for required Rider Force (<i>F<sub>rider</sub></i>) by balancing Inertial forces against Hydrodynamic Lift (<i>F<sub>rider</sub> = F<sub>inertia</sub> - F<sub>hydro</sub></i>).</li>
+                </ul>
+
+                <p><strong>File Structure:</strong> Single-file index.html containing CSS, HTML layout, and the JS simulation engine.</p>
+
+                <p><strong>How to Run Locally:</strong> Click on live Demo above or simply download the index.html file and open it in any modern web browser (Chrome, Firefox, Safari). No server or installation is required.</p>
             </div>
-        </div>
-        </div>
+        </details>
     </div>
 
 <script>
@@ -520,7 +614,6 @@ function calculatePhysics(t) {
     // the rider is just being carried. They cannot "pull" the board down 
     // to generate power. Clamp force to 0.
     const F_rider_action = Math.max(0, F_r);
-    
     
     // Power = Force * Velocity
     // We clamp to 0 because we assume the rider cannot "regenerate" energy 
