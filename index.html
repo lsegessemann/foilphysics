@@ -350,6 +350,7 @@
                 <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
                 <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> Gravity</label>
                 <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Board+Rider</label>
+                <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: lime; border:1px solid #333;"></div> Net Force</label>
             </div>
         </div>
 
@@ -614,7 +615,7 @@ const CONFIG = {
 };
 
 // --- VISIBILITY STATE ---
-const VISIBILITY = { lift: true, drag: true, rider: true, thrust: true, assembly: true, weight: false };
+const VISIBILITY = { lift: true, drag: true, rider: true, thrust: true, assembly: true, weight: false, net: false };
 
 // --- STATE ---
 let state = {
@@ -786,11 +787,17 @@ function calculatePhysics(t) {
 
     // --- 6. OUTPUTS ---
     const Rx = 0; 
-    const Rz = -power; 
+    const Rz = -F_rider_action; 
+
+    // Calculate Net Force (Sum of all forces)
+    // Horizontal Net: Lift_x + Drag_x (Rider and Gravity are vertical)
+    const NetFx = Lx + Dx;
+    // Vertical Net: Lift_z + Drag_z + Gravity + Rider_Push
+    const NetFz = Lz + Dz + Wz;
     
     return {
         x, z, alpha, gamma, theta, vz, az,
-        Lx, Lz, Dx, Dz, Rx, Rz, Wz,
+        Lx, Lz, Dx, Dz, Rx, Rz, Wz, NetFx, NetFz,
         thrust: Lx + Dx, 
         riderForce: F_rider_action,
         power: power,
@@ -1384,6 +1391,7 @@ function render(data) {
     }
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
     if (VISIBILITY.weight) drawArrow(ctx, foilCX, foilCY, 0, phys.Wz, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W);
+    if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.NetFx, phys.NetFz, 'lime', vecScale, CONFIG.scale_N);
 
     ctx.restore();
     
@@ -1615,6 +1623,7 @@ document.getElementById('chk-rider').addEventListener('change', (e) => VISIBILIT
 document.getElementById('chk-thrust').addEventListener('change', (e) => VISIBILITY.thrust = e.target.checked);
 document.getElementById('chk-assembly').addEventListener('change', (e) => VISIBILITY.assembly = e.target.checked);
 document.getElementById('chk-weight').addEventListener('change', (e) => VISIBILITY.weight = e.target.checked);
+document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
 
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') state.paused = !state.paused;
