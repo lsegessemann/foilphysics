@@ -126,24 +126,6 @@
             transform: scale(1.1);
         }
 
-        /* LEGEND STYLES */
-        .legend-container {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            margin-top: 10px;
-            border-top: 1px solid #eee;
-            padding-top: 10px;
-        }
-        .legend-title {
-            font-size: 10px;
-            font-weight: bold;
-            color: #666;
-            text-transform: uppercase;
-            margin-bottom: 2px;
-        }
-        .legend-items { display: flex; flex-direction: column; gap: 6px; font-size: 11px; }
-        .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
         input[type=checkbox] { cursor: pointer; }
         kbd {
@@ -165,19 +147,18 @@
         #graphs-column {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 4px;
             flex: 1;
         }
 
         /* Make graphs fill the available height to align with controls */
         #graphs-column .canvas-wrapper:not(#avgThrustStatus):not(#avgLiftStatus) {
-            flex: 1;
             display: flex;
             flex-direction: column;
         }
         #graphs-column .canvas-wrapper:not(#avgThrustStatus):not(#avgLiftStatus) canvas {
             width: 100%;
-            height: 100%;
+            height: auto;
         }
 
         @media (max-width: 768px) {
@@ -245,7 +226,7 @@
         #slowmo-controls {
             position: absolute;
             bottom: 15px;
-            right: 20px;
+            left: 20px;
             background-color: rgba(255, 255, 255, 0.90);
             padding: 6px 10px;
             border-radius: 6px;
@@ -259,6 +240,27 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             z-index: 10;
         }
+
+        #visibility-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.90);
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            width: 232px;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 12px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #555;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
 
         /* Documentation Dropdown */
         details {
@@ -339,29 +341,38 @@
             </div>
             <div id="slowmo-controls">
                 <input type="checkbox" id="chk-slowmo" style="cursor: pointer;">
-                <label for="chk-slowmo" style="cursor: pointer; user-select: none;">Slow Motion (1/5x)</label>
+                <label for="chk-slowmo" style="cursor: pointer; user-select: none;">Slow Motion</label>
+            </div>
+            <div id="visibility-controls">
+                <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift</label>
+                <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
+                <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
+                <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net</label>
+                <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
+                <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> Gravity</label>
+                <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foil</label>
             </div>
         </div>
 
         <div id="dashboard-row">
             <div id="graphs-column">
                 <div class="canvas-wrapper">
-                    <canvas id="graphLift" width="1300" height="120"></canvas>
+                    <canvas id="graphLift" width="1300" height="260"></canvas>
                 </div>
-                <div class="canvas-wrapper" id="avgLiftStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
+                <div class="canvas-wrapper" id="avgLiftStatus" style="padding: 19px; text-align: center; font-size: 12px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Lift: Balanced : <span id="val-avg-lift">0</span> N
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphThrust" width="1300" height="120"></canvas>
+                    <canvas id="graphThrust" width="1300" height="260"></canvas>
                 </div>
-                <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 10px; text-align: center; font-size: 14px; font-weight: bold; background-color: #e8f5e9;">
+                <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 19px; text-align: center; font-size: 12px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphPower" width="1300" height="120"></canvas>
+                    <canvas id="graphPower" width="1300" height="260"></canvas>
                 </div>
                 <div class="canvas-wrapper">
-                    <canvas id="graphAvgPower" width="1300" height="120"></canvas>
+                    <canvas id="graphAvgPower" width="1300" height="260"></canvas>
                 </div>
             </div>
             
@@ -442,21 +453,9 @@
                 <button id="btn-replay" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">REPLAY</button>
             </div>
 
-            <div class="legend-container">
-                <div class="legend-title">Visibility</div>
-                <div class="legend-items">
-                    <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift Force Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag Force Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider Push Force Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net Force Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust Force Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> Gravity (Weight) Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foilboard and Rider </label>
-                </div>
-                <div style="font-size: 9px; color: #555; margin-top: 5px;">
-                    <kbd>SPACE</kbd> Pause
-                </div>
-            </div> <!-- End legend-container -->
+            <div style="font-size: 9px; color: #555; margin-top: 10px; text-align:center;">
+                <kbd>SPACE</kbd> Pause &nbsp; <kbd>&larr;</kbd> Rewind &nbsp; <kbd>&rarr;</kbd> Forward
+            </div>
         </div> <!-- End controls -->
         </div> <!-- End dashboard-row -->
 
@@ -826,7 +825,7 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
     const h = ctx.canvas.height;
     
     // Scale factor for High DPI (assuming base height of 60px)
-    const scale = h / 60;
+    const scale = h / 80;
 
     ctx.clearRect(0, 0, w, h);
 
@@ -838,11 +837,11 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
     const bottomMargin = 15 * scale;
 
     // Title
-    ctx.font = "bold " + (7 * scale) + "px " + fontStack;
-    ctx.fillStyle = "#555";
+    ctx.font =  (8 * scale) + "px " + fontStack;
+    ctx.fillStyle = "#333";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(title.toUpperCase(), leftMargin, 5 * scale);
+    ctx.fillText(title.toUpperCase(), leftMargin, 4 * scale);
 
     const plotW = w - leftMargin - rightMargin;
     const plotH = h - topMargin - bottomMargin;
@@ -894,8 +893,8 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
     }
 
     // Labels
-    ctx.fillStyle = "#666";
-    ctx.font = (6.5 * scale) + "px " + fontStack;
+    ctx.fillStyle = "#444";
+    ctx.font =  (8 * scale) + "px " + fontStack;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
@@ -1006,7 +1005,7 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
         const lastVal = data2[data2.length - 1];
         const py = midY - (lastVal * scaleY);
         ctx.fillStyle = color2.replace(/[\d.]+\)$/, '1)');
-        ctx.font = "bold " + (6.5 * scale) + "px " + fontStack;
+        ctx.font = "bold " + (9 * scale) + "px " + fontStack;
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
         ctx.fillText(lastVal.toFixed(0), leftMargin - 6 * scale, py);
