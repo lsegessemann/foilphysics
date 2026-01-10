@@ -430,9 +430,10 @@
                 <div class="legend-items">
                     <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift Force Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag Force Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider Power Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider Push Force Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net Force Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust Force Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> Gravity (Weight) Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foilboard and Rider </label>
                 </div>
                 <div style="font-size: 9px; color: #555; margin-top: 5px;">
@@ -535,7 +536,7 @@ const CONFIG = {
     g: 9.81,             // Gravity (m/s²)
     visual_size_m: 0.4,  // Visual scale for foil chord length
     // Scales
-    scale_L: 0.5, scale_D: 5.0, scale_T: 1.0, scale_R: 0.5, scale_N: 0.5,
+    scale_L: 0.5, scale_D: 5.0, scale_T: 1.0, scale_R: 0.5, scale_N: 0.5, scale_W: 0.5,
     AR: 13.9,            // Aspect Ratio (Span² / Area)
     
     // Adjustable Parameters
@@ -547,7 +548,7 @@ const CONFIG = {
 };
 
 // --- VISIBILITY STATE ---
-const VISIBILITY = { lift: true, drag: true, rider: true, net: false, thrust: true, assembly: true };
+const VISIBILITY = { lift: true, drag: true, rider: true, net: false, thrust: true, assembly: true, weight: false };
 
 // --- STATE ---
 let state = {
@@ -714,6 +715,9 @@ function calculatePhysics(t) {
     // You only pay for 60% of the mechanical work.
     let power = Math.max(0, rawPower * CONFIG.elastic_efficiency);
 
+    // Weight Vector (Gravity)
+    const Wz = -CONFIG.mass * CONFIG.g;
+
     // --- 6. OUTPUTS ---
     const Rx = 0; 
     const Rz = -power; 
@@ -722,7 +726,7 @@ function calculatePhysics(t) {
     
     return {
         x, z, alpha, gamma, theta, vz, az,
-        Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz,
+        Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz, Wz,
         thrust: Lx + Dx, 
         riderForce: F_rider_action,
         power: power,
@@ -1316,6 +1320,7 @@ function render(data) {
     }
     if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.Nx, phys.Nz, 'green', vecScale, CONFIG.scale_N);
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
+    if (VISIBILITY.weight) drawArrow(ctx, foilCX, foilCY, 0, phys.Wz, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W);
 
     ctx.restore();
     
@@ -1428,6 +1433,7 @@ document.getElementById('chk-rider').addEventListener('change', (e) => VISIBILIT
 document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
 document.getElementById('chk-thrust').addEventListener('change', (e) => VISIBILITY.thrust = e.target.checked);
 document.getElementById('chk-assembly').addEventListener('change', (e) => VISIBILITY.assembly = e.target.checked);
+document.getElementById('chk-weight').addEventListener('change', (e) => VISIBILITY.weight = e.target.checked);
 
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') state.paused = !state.paused;
