@@ -61,6 +61,11 @@ Power is calculated as the product of the Rider's Force and the Leg Extension Ve
   $$P = \max(0, P_{inst})$$
   *(Negative power is clamped to 0, assuming the rider does not regenerate energy from the board pushing back).*
 
+### 5. Power Metrics (Normalized vs Average)
+- **Average Power:** The arithmetic mean of the power output ($P_{avg} = \frac{1}{N} \sum P$). It represents the total physical work done.
+- **Normalized Power:** A weighted average that emphasizes high-intensity spikes. Since physiological fatigue increases non-linearly with intensity, this metric better represents the metabolic "cost" of the session.
+  $$P_{norm} = \sqrt[4]{\frac{1}{N} \sum P^4}$$
+
 ## Model Limitations
 
 ### 1. Aerodynamic Limitations

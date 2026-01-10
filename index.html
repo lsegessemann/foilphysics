@@ -517,6 +517,15 @@
                     <em>(Negative power is clamped to 0, assuming the rider does not regenerate energy from the board pushing back).</em></li>
                 </ul>
 
+                <h3>5. Power Metrics (Normalized vs Average)</h3>
+                <ul>
+                    <li><strong>Average Power:</strong><br>
+                    The arithmetic mean of the power output. It represents the total physical work done over time.</li>
+                    <li><strong>Normalized Power:</strong><br>
+                    A weighted average that emphasizes high-intensity spikes. Since physiological fatigue increases non-linearly with intensity, this metric better represents the metabolic "cost" of the session. It is calculated using a 4th-power weighting algorithm:<br>
+                    <i>P<sub>norm</sub> = ( &Sigma; P<sup>4</sup> / N )<sup>0.25</sup></i></li>
+                </ul>
+
                 <h2>Model Limitations</h2>
 
                 <h3>1. Aerodynamic Limitations</h3>
