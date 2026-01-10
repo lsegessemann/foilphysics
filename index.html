@@ -347,10 +347,9 @@
                 <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift</label>
                 <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
                 <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
-                <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net</label>
                 <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
                 <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> Gravity</label>
-                <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foil</label>
+                <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Board+Rider</label>
             </div>
         </div>
 
@@ -615,7 +614,7 @@ const CONFIG = {
 };
 
 // --- VISIBILITY STATE ---
-const VISIBILITY = { lift: true, drag: true, rider: true, net: false, thrust: true, assembly: true, weight: false };
+const VISIBILITY = { lift: true, drag: true, rider: true, thrust: true, assembly: true, weight: false };
 
 // --- STATE ---
 let state = {
@@ -788,12 +787,10 @@ function calculatePhysics(t) {
     // --- 6. OUTPUTS ---
     const Rx = 0; 
     const Rz = -power; 
-    const Nx = CONFIG.mass * 0; 
-    const Nz = CONFIG.mass * az; // Visualizing total acceleration for reference
     
     return {
         x, z, alpha, gamma, theta, vz, az,
-        Lx, Lz, Dx, Dz, Rx, Rz, Nx, Nz, Wz,
+        Lx, Lz, Dx, Dz, Rx, Rz, Wz,
         thrust: Lx + Dx, 
         riderForce: F_rider_action,
         power: power,
@@ -1385,7 +1382,6 @@ function render(data) {
             drawArrow(ctx, foilCX, foilCY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R);
         }
     }
-    if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.Nx, phys.Nz, 'green', vecScale, CONFIG.scale_N);
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
     if (VISIBILITY.weight) drawArrow(ctx, foilCX, foilCY, 0, phys.Wz, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W);
 
@@ -1616,7 +1612,6 @@ document.getElementById('btn-replay').addEventListener('click', () => {
 document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
 document.getElementById('chk-drag').addEventListener('change', (e) => VISIBILITY.drag = e.target.checked);
 document.getElementById('chk-rider').addEventListener('change', (e) => VISIBILITY.rider = e.target.checked);
-document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
 document.getElementById('chk-thrust').addEventListener('change', (e) => VISIBILITY.thrust = e.target.checked);
 document.getElementById('chk-assembly').addEventListener('change', (e) => VISIBILITY.assembly = e.target.checked);
 document.getElementById('chk-weight').addEventListener('change', (e) => VISIBILITY.weight = e.target.checked);
