@@ -366,27 +366,46 @@
             </div>
             
             <div id="controls">
-            <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
-                <label>Frequency: <span id="disp-freq">1.65</span> Hz</label>
-                <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
-            </div>
-            <div class="control-group" title="Vertical range of motion for the foil path.">
-                <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
-                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
-            </div>
-            <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
-                <label>Asymmetry: <span id="disp-asym">0.00</span></label>
-                <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
-                <button id="btn-symmetric" style="padding: 4px; font-size: 10px; margin-top: 4px; cursor:pointer;">Revert to Symmetric</button>
-            </div>
             <div class="control-group" title="Forward velocity of the rider.">
                 <label>Speed: <span id="disp-speed">20.0</span> km/h</label>
                 <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="20.0">
             </div>
+            <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label>Frequency: <span id="disp-freq">1.65</span> Hz</label>
+                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                </div>
+                <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
+            </div>
+            <div class="control-group" title="Vertical range of motion for the foil path.">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
+                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-amp" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                </div>
+                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
+            </div>
+            <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label>Asymmetry: <span id="disp-asym">0.00</span></label>
+                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-asym" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                </div>
+                <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
+            </div>
             <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
-                <label>Frontwing Pitch Trim: <span id="disp-trim">3.3</span>°</label>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label>Frontwing Pitch Trim: <span id="disp-trim">3.3</span>°</label>
+                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-trim" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                </div>
                 <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="3.3">
             </div>
+            <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label>Phase Shift: <span id="disp-phase">90</span>°</label>
+                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-phase" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                </div>
+                <input type="range" id="in-phase" min="85" max="95" step="1" value="90">
+            </div>
+            <div style="background-color: #f4f4f5; padding: 8px; border-radius: 6px; border: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 8px;">
             <div class="control-group" title="Total weight of rider plus gear.">
                 <label>Mass: <span id="disp-mass">70</span> kg</label>
                 <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
@@ -411,15 +430,13 @@
                 <label>System Elasticity: <span id="disp-elastic">30</span>%</label>
                 <input type="range" id="in-elastic" min="0" max="30" step="1" value="30">
             </div>
-            <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
-                <label>Phase Shift: <span id="disp-phase">90</span>°</label>
-                <input type="range" id="in-phase" min="85" max="95" step="1" value="90">
-            </div>
             <div class="control-group" title="Zoom level for the foil visualization.">
                 <label>Visualization Scale: <span id="disp-size">0.40</span></label>
                 <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
             </div>
+            </div>
             
+            <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
             <div style="display: flex; gap: 8px; margin-top: 5px;">
                 <button id="btn-reset" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">RESET</button>
                 <button id="btn-replay" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">REPLAY</button>
@@ -1435,12 +1452,131 @@ document.getElementById('in-swing').addEventListener('input', (e) => { CONFIG.sw
 document.getElementById('in-elastic').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.elastic_efficiency = 1.0 - (val / 100.0); ui.dispElastic.textContent = val.toFixed(0); });
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
 
-document.getElementById('btn-symmetric').addEventListener('click', () => {
-    const symVal = 0.0;
-    CONFIG.asymmetry_factor = symVal;
-    document.getElementById('in-asym').value = symVal;
-    ui.dispAsym.textContent = symVal.toFixed(2);
+document.getElementById('btn-optimize').addEventListener('click', () => {
+    const btn = document.getElementById('btn-optimize');
+    const originalText = btn.textContent;
+    btn.textContent = "CALCULATING...";
+    
+    setTimeout(() => {
+        runOptimization();
+        btn.textContent = originalText;
+    }, 10);
 });
+
+function runOptimization() {
+    const targetLift = CONFIG.mass * CONFIG.g;
+    const targetThrust = 0; 
+    const liftTolerance = 5.0;
+    const thrustTolerance = 2.0;
+
+    // Backup
+    const originalFreq = state.freq;
+    const originalAmp = state.heave_amp;
+    const originalTrim = CONFIG.pitch_trim_deg;
+    const originalAsym = CONFIG.asymmetry_factor;
+    const originalPhase = CONFIG.phase_shift_deg;
+
+    // Check locks
+    const lockFreq = document.getElementById('lock-freq').checked;
+    const lockAmp = document.getElementById('lock-amp').checked;
+    const lockTrim = document.getElementById('lock-trim').checked;
+    const lockAsym = document.getElementById('lock-asym').checked;
+    const lockPhase = document.getElementById('lock-phase').checked;
+
+    let bestFreq = originalFreq;
+    let bestAmp = originalAmp;
+    let bestTrim = originalTrim;
+    let bestAsym = originalAsym;
+    let bestPhase = originalPhase;
+    let bestCost = Infinity;
+
+    // Helper
+    function evaluate(f, a, tr, as, ph) {
+        state.freq = f;
+        state.heave_amp = a;
+        CONFIG.pitch_trim_deg = tr;
+        CONFIG.asymmetry_factor = as;
+        CONFIG.phase_shift_deg = ph;
+
+        let sumLift = 0;
+        let sumThrust = 0;
+        let count = 0;
+        
+        const period = 1.0 / f;
+        const dt = 0.02; 
+        const steps = Math.ceil((2 * period) / dt);
+
+        for (let i = 0; i < steps; i++) {
+            const t = i * dt;
+            const phys = calculatePhysics(t);
+            sumLift += (phys.Lz + phys.Dz);
+            sumThrust += phys.thrust;
+            count++;
+        }
+
+        const avgLift = sumLift / count;
+        const avgThrust = sumThrust / count;
+
+        const liftErr = Math.abs(avgLift - targetLift);
+        const thrustErr = Math.abs(avgThrust - targetThrust);
+        
+        if (isNaN(liftErr) || isNaN(thrustErr)) return Infinity;
+
+        return { cost: liftErr + thrustErr * 2.0, l: avgLift, t: avgThrust };
+    }
+
+    // Optimization Loop
+    const iterations = 1500;
+    const learningRate = 1.0; 
+
+    for (let i = 0; i < iterations; i++) {
+        const scale = learningRate * Math.max(0.1, (1 - i/iterations));
+
+        let f = bestFreq + (lockFreq ? 0 : (Math.random() - 0.5) * 1.0 * scale);
+        let a = bestAmp + (lockAmp ? 0 : (Math.random() - 0.5) * 0.1 * scale);
+        let tr = bestTrim + (lockTrim ? 0 : (Math.random() - 0.5) * 5.0 * scale);
+        let as = bestAsym + (lockAsym ? 0 : (Math.random() - 0.5) * 0.5 * scale);
+        let ph = bestPhase + (lockPhase ? 0 : (Math.random() - 0.5) * 10.0 * scale);
+
+        if (!lockFreq) f = Math.max(0.5, Math.min(2.5, f));
+        if (!lockAmp) a = Math.max(0.05, Math.min(0.30, a));
+        if (!lockTrim) tr = Math.max(-2.0, Math.min(10.0, tr));
+        if (!lockAsym) as = Math.max(0.0, Math.min(0.8, as));
+        if (!lockPhase) ph = Math.max(85.0, Math.min(95.0, ph));
+
+        const r = evaluate(f, a, tr, as, ph);
+        
+        if (r.cost < bestCost) {
+            bestCost = r.cost;
+            bestFreq = f;
+            bestAmp = a;
+            bestTrim = tr;
+            bestAsym = as;
+            bestPhase = ph;
+            
+            if (Math.abs(r.l - targetLift) < liftTolerance && Math.abs(r.t - targetThrust) < thrustTolerance) {
+                break;
+            }
+        }
+    }
+
+    // Apply
+    state.freq = bestFreq;
+    state.heave_amp = bestAmp;
+    CONFIG.pitch_trim_deg = bestTrim;
+    CONFIG.asymmetry_factor = bestAsym;
+    CONFIG.phase_shift_deg = bestPhase;
+
+    // Update UI
+    document.getElementById('in-freq').value = bestFreq; ui.dispFreq.textContent = bestFreq.toFixed(2);
+    document.getElementById('in-amp').value = bestAmp; ui.dispAmp.textContent = bestAmp.toFixed(2);
+    document.getElementById('in-trim').value = bestTrim; ui.dispTrim.textContent = bestTrim.toFixed(1);
+    document.getElementById('in-asym').value = bestAsym; ui.dispAsym.textContent = bestAsym.toFixed(2);
+    document.getElementById('in-phase').value = bestPhase; ui.dispPhase.textContent = bestPhase.toFixed(0);
+    
+    // Clear history
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = [];
+}
 
 document.getElementById('btn-reset').addEventListener('click', () => {
     state.freq = 1.65; document.getElementById('in-freq').value = 1.65; ui.dispFreq.textContent = "1.65";
