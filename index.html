@@ -374,6 +374,11 @@
                 <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
                 <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
             </div>
+            <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
+                <label>Asymmetry: <span id="disp-asym">0.00</span></label>
+                <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
+                <button id="btn-symmetric" style="padding: 4px; font-size: 10px; margin-top: 4px; cursor:pointer;">Revert to Symmetric</button>
+            </div>
             <div class="control-group" title="Forward velocity of the rider.">
                 <label>Speed: <span id="disp-speed">20.0</span> km/h</label>
                 <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="20.0">
@@ -425,7 +430,7 @@
                 <div class="legend-items">
                     <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift Force Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag Force Vector</label>
-                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider Force Vector</label>
+                    <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider Power Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: green;"></div> Net Force Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust Force Vector</label>
                     <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Foilboard and Rider </label>
@@ -443,6 +448,14 @@
                 <h2>Physics Model</h2>
                 <p>The simulation uses a custom quasi-steady solver that iterates through time steps (<i>dt</i>) to calculate forces and rider power.</p>
 
+                <h3>Simplifications</h3>
+                <ul>
+                    <li>All forces act directly on the front wing, which is assumed to be rigid</li>
+                    <li>The indication bars for average lift and thrust indicate whether the pumping motion is actually viable for the selected speed. If they're not balanced / on target, the selected parameters are not in steady state.</li>
+                    <li>There is no stabilizer/rear wing modelled</li>
+                    <li>The stickfigure is only there for your entertainment - the trajectory of the foil is defined by the frequency and amplitude input.</li>
+                </ul>
+
                 <h3>1. Kinematics (Motion)</h3>
                 <p>The rider's vertical motion (<strong>Heave</strong>) and the board's angle (<strong>Pitch</strong>) are driven by sinusoidal functions, linked by a configurable <strong>Phase Shift</strong>.</p>
 
@@ -453,9 +466,15 @@
                     <li><strong>Vertical Acceleration (<i>a<sub>z</sub></i>):</strong> <i>a<sub>z</sub>(t) = -A &omega;<sup>2</sup> cos(&omega;t)</i></li>
                     <li><strong>Pitch Angle (<i>&theta;</i>):</strong> <i>&theta;(t) = &theta;<sub>trim</sub> + &theta;<sub>amp</sub> cos(&omega;t + &phi;)</i><br>
                     <em>(Where &phi; is the Phase Shift)</em></li>
+                    <li><strong>Standard Phase:</strong> <i>&phi; = &omega;t</i></li>
+                    <li><strong>Asymmetric Phase:</strong> <i>&phi;<sub>asym</sub> = &phi; - Asymmetry cos(&phi;)</i></li>
+                    <li><strong>Vertical Position (<i>z</i>):</strong> <i>z(t) = A cos(&phi;<sub>asym</sub>)</i></li>
+                    <li><strong>Vertical Velocity (<i>v<sub>z</sub></i>):</strong> <i>v<sub>z</sub>(t) = -A sin(&phi;<sub>asym</sub>) d&phi;<sub>asym</sub>/dt</i></li>
+                    <li><strong>Vertical Acceleration (<i>a<sub>z</sub></i>):</strong> Calculated as the derivative of <i>v<sub>z</sub></i>.</li>
+                    <li><strong>Pitch Angle (<i>&theta;</i>):</strong> <i>&theta;(t) = &theta;<sub>trim</sub> + &theta;<sub>amp</sub> cos(&phi;<sub>asym</sub> + &phi;<sub>shift</sub>)</i></li>
                 </ul>
 
-                <h3>2. Aerodynamics (Fluid Forces)</h3>
+                <h3>2. Fluid Forces</h3>
                 <p>Lift and Drag are calculated using <strong>Thin Airfoil Theory</strong>, corrected for a finite Aspect Ratio (<i>AR</i>).</p>
 
                 <ul>
@@ -523,7 +542,8 @@ const CONFIG = {
     pitch_trim_deg: 3.3,    // Base pitch angle in degrees
     phase_shift_deg: 90.0,  // Phase difference between Heave and Pitch
     swing_weight_ratio: 0.4, // Percentage of body mass considered moving (legs)
-    elastic_efficiency: 0.7  // Rider elastic efficiency
+    elastic_efficiency: 0.7,  // Rider elastic efficiency
+    asymmetry_factor: 0.0
 };
 
 // --- VISIBILITY STATE ---
@@ -584,6 +604,7 @@ const ui = {
     
     dispFreq: document.getElementById('disp-freq'),
     dispAmp: document.getElementById('disp-amp'),
+    dispAsym: document.getElementById('disp-asym'),
     dispSize: document.getElementById('disp-size'),
     dispSpeed: document.getElementById('disp-speed'),
     dispMass: document.getElementById('disp-mass'),
@@ -619,11 +640,19 @@ function calculatePhysics(t) {
     const phase_rad = CONFIG.phase_shift_deg * (Math.PI / 180);
 
     // Position (z), Velocity (vz), Acceleration (az) of the FEET/BOARD
-    const z = state.heave_amp * Math.cos(omega * t);
-    const vz = -state.heave_amp * omega * Math.sin(omega * t);
-    const az = -state.heave_amp * (omega ** 2) * Math.cos(omega * t);
+    const phi = omega * t;
+    // Asymmetric pumping profile: Quick Down / Slow Up (Time Warping)
+    // psi = phi - C * cos(phi)
+    const psi = phi - CONFIG.asymmetry_factor * Math.cos(phi);
+    const dpsi = omega * (1 + CONFIG.asymmetry_factor * Math.sin(phi));
+    const ddpsi = (omega * omega) * CONFIG.asymmetry_factor * Math.cos(phi);
     
-    const theta = pitch_trim + pitch_amp * Math.cos(omega * t + phase_rad);
+    const z = state.heave_amp * Math.cos(psi);
+    const vz = -state.heave_amp * Math.sin(psi) * dpsi;
+    const az = -state.heave_amp * (Math.cos(psi) * (dpsi * dpsi) + Math.sin(psi) * ddpsi);
+    
+    // Pitch follows the warped phase to stay in sync
+    const theta = pitch_trim + pitch_amp * Math.cos(psi + phase_rad);
 
     // --- 3. AERODYNAMICS ---
     const x = CONFIG.U * t;
@@ -687,7 +716,7 @@ function calculatePhysics(t) {
 
     // --- 6. OUTPUTS ---
     const Rx = 0; 
-    const Rz = -F_rider_action; 
+    const Rz = -power; 
     const Nx = CONFIG.mass * 0; 
     const Nz = CONFIG.mass * az; // Visualizing total acceleration for reference
     
@@ -1337,6 +1366,7 @@ function render(data) {
 // --- LISTENERS ---
 document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(2); });
 document.getElementById('in-amp').addEventListener('input', (e) => { state.heave_amp = parseFloat(e.target.value); ui.dispAmp.textContent = state.heave_amp.toFixed(2); });
+document.getElementById('in-asym').addEventListener('input', (e) => { CONFIG.asymmetry_factor = parseFloat(e.target.value); ui.dispAsym.textContent = CONFIG.asymmetry_factor.toFixed(2); });
 document.getElementById('in-size').addEventListener('input', (e) => { CONFIG.visual_size_m = parseFloat(e.target.value); ui.dispSize.textContent = CONFIG.visual_size_m.toFixed(2); });
 document.getElementById('in-speed').addEventListener('input', (e) => { const kph = parseFloat(e.target.value); CONFIG.U = kph / 3.6; ui.dispSpeed.textContent = kph.toFixed(1); });
 document.getElementById('in-mass').addEventListener('input', (e) => { CONFIG.mass = parseFloat(e.target.value); ui.dispMass.textContent = CONFIG.mass.toFixed(0); });
@@ -1349,9 +1379,17 @@ document.getElementById('in-swing').addEventListener('input', (e) => { CONFIG.sw
 document.getElementById('in-elastic').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.elastic_efficiency = 1.0 - (val / 100.0); ui.dispElastic.textContent = val.toFixed(0); });
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
 
+document.getElementById('btn-symmetric').addEventListener('click', () => {
+    const symVal = 0.0;
+    CONFIG.asymmetry_factor = symVal;
+    document.getElementById('in-asym').value = symVal;
+    ui.dispAsym.textContent = symVal.toFixed(2);
+});
+
 document.getElementById('btn-reset').addEventListener('click', () => {
     state.freq = 1.65; document.getElementById('in-freq').value = 1.65; ui.dispFreq.textContent = "1.65";
     state.heave_amp = 0.13; document.getElementById('in-amp').value = 0.13; ui.dispAmp.textContent = "0.13";
+    CONFIG.asymmetry_factor = 0.0; document.getElementById('in-asym').value = 0.0; ui.dispAsym.textContent = "0.00";
     CONFIG.U = 20.0 / 3.6; document.getElementById('in-speed').value = 20.0; ui.dispSpeed.textContent = "20.0";
     CONFIG.mass = 70.0; document.getElementById('in-mass').value = 70; ui.dispMass.textContent = "70";
     CONFIG.S = 0.135; document.getElementById('in-area').value = 1350; ui.dispArea.textContent = "1350";

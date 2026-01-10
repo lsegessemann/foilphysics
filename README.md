@@ -18,6 +18,12 @@ The rider's vertical motion (**Heave**) and the board's angle (**Pitch**) are dr
 - **Vertical Acceleration ($a_z$):** $a_z(t) = -A \omega^2 \cos(\omega t)$
 - **Pitch Angle ($\theta$):** $\theta(t) = \theta_{trim} + \theta_{amp} \cos(\omega t + \phi)$
   *(Where $\phi$ is the Phase Shift)*
+- **Standard Phase:** $\phi = \omega t$
+- **Asymmetric Phase:** $\phi_{asym} = \phi - \text{Asymmetry} \cos(\phi)$
+- **Vertical Position ($z$):** $z(t) = A \cos(\phi_{asym})$
+- **Vertical Velocity ($v_z$):** $v_z(t) = -A \sin(\phi_{asym}) \frac{d\phi_{asym}}{dt}$
+- **Vertical Acceleration ($a_z$):** Calculated as the derivative of $v_z$.
+- **Pitch Angle ($\theta$):** $\theta(t) = \theta_{trim} + \theta_{amp} \cos(\phi_{asym} + \phi_{shift})$
 
 ### 2. Fluid Forces
 Lift and Drag are calculated using **Thin Airfoil Theory**, corrected for a finite Aspect Ratio ($AR$).
