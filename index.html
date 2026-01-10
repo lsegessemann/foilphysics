@@ -249,10 +249,8 @@
             padding: 6px 10px;
             border-radius: 6px;
             border: 1px solid #ddd;
-            width: 232px;
-            box-sizing: border-box;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(4, auto);
             gap: 4px 12px;
             font-size: 10px;
             font-weight: bold;
@@ -261,6 +259,13 @@
             z-index: 10;
         }
         .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+
+        @media (max-width: 768px) {
+            #visibility-controls {
+                grid-template-columns: repeat(3, auto);
+                right: 10px;
+            }
+        }
 
         /* Documentation Dropdown */
         details {
