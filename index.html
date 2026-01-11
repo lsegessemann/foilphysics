@@ -61,7 +61,7 @@
             line-height: 1.6;
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            min-width: 200px;
+            min-width: 260px;
             z-index: 10;
         }
 
@@ -340,9 +340,9 @@
                     </span>
                 </span>: <span id="val-aoa">0.0</span>°<br>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
-                Inst. Power: <span id="val-watts">0</span> W<br>
-                Avg. Power: <span id="val-arith-avg-watts">0</span> W<br>
-                Norm. Power: <span id="val-avg-watts">0</span> W
+                Instantaneous Power: <span id="val-watts">0</span> W<br>
+                Average Power: <span id="val-arith-avg-watts">0</span> W<br>
+                Normalized Power: <span id="val-avg-watts">0</span> W
             </div>
             <div id="slowmo-controls">
                 <input type="checkbox" id="chk-slowmo" style="cursor: pointer;">
@@ -355,6 +355,7 @@
                 <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
                 <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> Gravity</label>
                 <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Board+Rider</label>
+                <label class="legend-item"><input type="checkbox" id="chk-stab" checked><div class="dot" style="background: #d946ef;"></div> Stabilizer</label>
                 <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: lime; border:1px solid #333;"></div> Net Force</label>
             </div>
         </div>
@@ -379,77 +380,109 @@
                 <div class="canvas-wrapper">
                     <canvas id="graphAvgPower" width="1300" height="260"></canvas>
                 </div>
+                <div class="canvas-wrapper">
+                    <canvas id="graphPowerComp" width="1300" height="260"></canvas>
+                </div>
             </div>
             
             <div id="controls">
-            <div class="control-group" title="Forward velocity of the rider.">
-                <label>Speed: <span id="disp-speed">20.0</span> km/h</label>
-                <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="20.0">
-            </div>
-            <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label>Frequency: <span id="disp-freq">1.65</span> Hz</label>
-                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+            <!-- GROUP 1: SPEED -->
+            <div style="background-color: #f0f9ff; padding: 8px; border-radius: 6px; border: 1px solid #bae6fd; display: flex; flex-direction: column; gap: 8px;">
+                <div class="control-group" title="Forward velocity of the rider.">
+                    <label>Speed: <span id="disp-speed">20.0</span> km/h</label>
+                    <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="20.0">
                 </div>
-                <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
             </div>
-            <div class="control-group" title="Vertical range of motion for the foil path.">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
-                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-amp" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+
+            <!-- GROUP 2: KINEMATICS -->
+            <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px;">
+                <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>Frequency: <span id="disp-freq">1.65</span> Hz</label>
+                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                    </div>
+                    <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
                 </div>
-                <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
-            </div>
-            <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label>Asymmetry: <span id="disp-asym">0.00</span></label>
-                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-asym" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                <div class="control-group" title="Vertical range of motion for the foil path.">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
+                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-amp" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                    </div>
+                    <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
                 </div>
-                <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
-            </div>
-            <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label>Frontwing Pitch Trim: <span id="disp-trim">3.3</span>°</label>
-                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-trim" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>Asymmetry: <span id="disp-asym">0.00</span></label>
+                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-asym" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                    </div>
+                    <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
                 </div>
-                <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="3.3">
-            </div>
-            <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label>Phase Shift: <span id="disp-phase">90</span>°</label>
-                    <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-phase" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>Front Wing Pitch: <span id="disp-trim">3.3</span>°</label>
+                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-trim" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                    </div>
+                    <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="3.3">
                 </div>
-                <input type="range" id="in-phase" min="85" max="95" step="1" value="90">
+                <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>Phase Shift: <span id="disp-phase">90</span>°</label>
+                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-phase" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
+                    </div>
+                    <input type="range" id="in-phase" min="85" max="95" step="1" value="90">
+                </div>
             </div>
+
+            <!-- GROUP 3: CONFIGURATION -->
+            <div style="background-color: #fdf4ff; padding: 8px; border-radius: 6px; border: 1px solid #f0abfc; display: flex; flex-direction: column; gap: 8px;">
+                <div class="control-group" title="Total weight of rider plus gear.">
+                    <label>Mass: <span id="disp-mass">70</span> kg</label>
+                    <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
+                </div>
+                <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
+                    <label>Wing Area: <span id="disp-area">1350</span> cm²</label>
+                    <input type="range" id="in-area" min="600" max="2000" step="50" value="1350">
+                </div>
+                <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
+                    <label>Aspect Ratio: <span id="disp-ar">13.9</span></label>
+                    <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.9">
+                </div>
+                <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
+                    <label>Drag Coeff (Cd0): <span id="disp-cd0">0.013</span></label>
+                    <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.013">
+                </div>
+                <div class="control-group" title="Surface area of the stabilizer.">
+                    <label>Stab Area: <span id="disp-stab-area">120</span> cm²</label>
+                    <input type="range" id="in-stab-area" min="0" max="500" step="10" value="120">
+                </div>
+                <div class="control-group" title="Angle of the rear stabilizer. Negative values create downforce (stability).">
+                    <label>Stab Angle: <span id="disp-stab-angle">-1.0</span>°</label>
+                    <input type="range" id="in-stab-angle" min="-3.0" max="3.0" step="0.1" value="-1.0">
+                </div>
+                <div class="control-group" title="Distance from the mast/front wing to the stabilizer.">
+                    <label>Fuselage Length: <span id="disp-fuse-len">0.70</span> m</label>
+                    <input type="range" id="in-fuse-len" min="0.10" max="1.00" step="0.01" value="0.70">
+                </div>
+                <div class="control-group" title="Where the rider stands relative to the Front Wing Lift. Positive = Forward (Nose Down).">
+                    <label>Rider Offset: <span id="disp-offset">0.00</span> m</label>
+                    <input type="range" id="in-offset" min="-0.20" max="0.30" step="0.01" value="0.0">
+                </div>
+            </div>
+
+            <!-- GROUP 4: SIMULATION -->
             <div style="background-color: #f4f4f5; padding: 8px; border-radius: 6px; border: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 8px;">
-            <div class="control-group" title="Total weight of rider plus gear.">
-                <label>Mass: <span id="disp-mass">70</span> kg</label>
-                <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
-            </div>
-            <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
-                <label>Wing Area: <span id="disp-area">1350</span> cm²</label>
-                <input type="range" id="in-area" min="600" max="2000" step="50" value="1350">
-            </div>
-            <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
-                <label>Aspect Ratio: <span id="disp-ar">13.9</span></label>
-                <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.9">
-            </div>
-            <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
-                <label>Drag Coeff (Cd0): <span id="disp-cd0">0.015</span></label>
-                <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.015">
-            </div>
-            <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
-                <label>Swing Weight: <span id="disp-swing">40</span>%</label>
-                <input type="range" id="in-swing" min="0.1" max="0.8" step="0.05" value="0.4">
-            </div>
-            <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
-                <label>System Elasticity: <span id="disp-elastic">0</span>%</label>
-                <input type="range" id="in-elastic" min="0" max="30" step="1" value="0">
-            </div>
-            <div class="control-group" title="Zoom level for the foil visualization.">
-                <label>Visualization Scale: <span id="disp-size">0.40</span></label>
-                <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
-            </div>
+                <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
+                    <label>Swing Weight: <span id="disp-swing">40</span>%</label>
+                    <input type="range" id="in-swing" min="0.1" max="0.8" step="0.05" value="0.4">
+                </div>
+                <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
+                    <label>System Elasticity: <span id="disp-elastic">0</span>%</label>
+                    <input type="range" id="in-elastic" min="0" max="30" step="1" value="0">
+                </div>
+                <div class="control-group" title="Zoom level for the foil visualization.">
+                    <label>Visualization Scale: <span id="disp-size">0.40</span></label>
+                    <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
+                </div>
             </div>
             
             <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
@@ -603,13 +636,19 @@ const CONFIG = {
     U: 20.0 / 3.6,       // Forward speed in m/s (converted from km/h)
     rho: 1000.0,         // Water density in kg/m³
     S: 0.135,            // Wing area in m² (e.g., 1350 cm² = 0.135 m²)
-    Cd0: 0.015,          // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
+    Cd0: 0.013,          // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
     k: 0.05,             // Induced Drag Factor (recalculated based on AR)
     g: 9.81,             // Gravity (m/s²)
     visual_size_m: 0.4,  // Visual scale for foil chord length
     // Scales
     scale_L: 0.5, scale_D: 5.0, scale_T: 1.0, scale_R: 0.5, scale_N: 0.5, scale_W: 0.5,
     AR: 13.9,            // Aspect Ratio (Span² / Area)
+    
+    // --- ADD THESE NEW LINES ---
+    S_stab: 0.012,       // Stabilizer Area in m2 (e.g., 250cm2)
+    fuselage_len: 0.70,  // Distance from Mast to Stabilizer (m)
+    stab_angle: -1.0,    // Stabilizer incidence angle (degrees) - usually negative!
+    rider_offset: 0.0,   // Rider's feet position relative to CoL (m)
     
     // Adjustable Parameters
     pitch_trim_deg: 3.3,    // Base pitch angle in degrees
@@ -620,7 +659,7 @@ const CONFIG = {
 };
 
 // --- VISIBILITY STATE ---
-const VISIBILITY = { lift: true, drag: true, rider: true, thrust: true, assembly: true, weight: false, net: false };
+const VISIBILITY = { lift: true, drag: true, rider: true, thrust: true, assembly: true, weight: false, net: false, stab: true };
 
 // --- STATE ---
 let state = {
@@ -639,7 +678,9 @@ let state = {
     avgLiftHistory: [],
     powerHistory: [],
     avgPowerHistory: [],
-    arithmeticAvgPowerHistory: []
+    arithmeticAvgPowerHistory: [],
+    linearPowerHistory: [],
+    rotationalPowerHistory: []
 };
 
 // --- NACA PROFILE ---
@@ -662,6 +703,7 @@ const ctxLift = document.getElementById('graphLift').getContext('2d');
 const ctxThrust = document.getElementById('graphThrust').getContext('2d');
 const ctxPower = document.getElementById('graphPower').getContext('2d');
 const ctxAvgPower = document.getElementById('graphAvgPower').getContext('2d');
+const ctxPowerComp = document.getElementById('graphPowerComp').getContext('2d');
 
 const ui = {
     time: document.getElementById('val-time'),
@@ -687,7 +729,11 @@ const ui = {
     dispTrim: document.getElementById('disp-trim'),
     dispPhase: document.getElementById('disp-phase'),
     dispSwing: document.getElementById('disp-swing'),
-    dispElastic: document.getElementById('disp-elastic')
+    dispElastic: document.getElementById('disp-elastic'),
+    dispStabAngle: document.getElementById('disp-stab-angle'),
+    dispStabArea: document.getElementById('disp-stab-area'),
+    dispFuseLen: document.getElementById('disp-fuse-len'),
+    dispOffset: document.getElementById('disp-offset')
 };
 
 // --- PHYSICS ENGINE ---
@@ -727,7 +773,7 @@ function calculatePhysics(t) {
     // Pitch follows the warped phase to stay in sync
     const theta = pitch_trim + pitch_amp * Math.cos(psi + phase_rad);
 
-    // --- 3. AERODYNAMICS ---
+    // --- 3. AERODYNAMICS (FRONT WING) ---
     const x = CONFIG.U * t;
     const vx = CONFIG.U;
     
@@ -735,7 +781,7 @@ function calculatePhysics(t) {
     const alpha = theta - gamma;
     const v_sq = vx*vx + vz*vz;
     
-    // Lift & Drag
+    // Front Wing Lift & Drag
     let Cl = (2 * Math.PI * alpha) / (1 + 2 / CONFIG.AR);
     const k = 1 / (Math.PI * CONFIG.AR);
     const Cd = CONFIG.Cd0 + k * (Cl * Cl);
@@ -746,46 +792,88 @@ function calculatePhysics(t) {
     const Lx = -L_mag * Math.sin(gamma); const Lz = L_mag * Math.cos(gamma);
     const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
     
-    // --- 4. DYNAMICS (The "Leg Stomp") ---
+    // --- 3b. AERODYNAMICS (STABILIZER) ---
+    // 1. Calculate Downwash Angle (epsilon) caused by front wing
+    // Approximation: epsilon = 2 * CL / (pi * AR)
+    const epsilon = (2 * Cl) / (Math.PI * CONFIG.AR);
     
-    // F_hydro_z: The water pushing UP on the foil.
-    const F_hydro_z = Lz + Dz; 
+    // 2. Local Angle of Attack for Stabilizer
+    // Alpha_stab = BoardPitch + StabAngle - FlightPathAngle - Downwash
+    // Note: theta (pitch) is the board angle. 
+    // We assume the fuselage is rigid, so stab sees the same theta, modified by downwash.
+    const stab_rad = CONFIG.stab_angle * (Math.PI / 180);
+    const alpha_stab = theta + stab_rad - gamma - epsilon;
+    
+    // 3. Stabilizer Lift (Usually Downforce, so likely negative)
+    const AR_stab = 4.0;
+    const Cl_stab = (2 * Math.PI * alpha_stab) / (1 + 2 / AR_stab);
+    const L_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * Cl_stab * v_sq;
+    
+    // Resolve Forces
+    const L_stab_z = L_stab_mag * Math.cos(gamma); 
+    const L_stab_x = -L_stab_mag * Math.sin(gamma);
+
+    // Add Stabilizer Drag (Profile drag + Induced)
+    const D_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * (0.02 + (Cl_stab*Cl_stab)/(Math.PI*AR_stab)) * v_sq;
+    const D_stab_x = -D_stab_mag * Math.cos(gamma); 
+    const D_stab_z = -D_stab_mag * Math.sin(gamma);
+
+    // --- 4. DYNAMICS & FORCES ---
+    
+    // Total Vertical Hydro Force
+    const F_hydro_z = Lz + Dz + L_stab_z + D_stab_z;
+
+    // Wing Geometry (Added Mass)
+    const span = Math.sqrt(CONFIG.AR * CONFIG.S);
+    const chord = CONFIG.S / span;
+    const added_mass = CONFIG.rho * Math.PI * Math.pow(chord / 2, 2) * span;
 
     // F_inertia_moving: Force needed to accelerate Board + Legs
-    // If az is negative (accelerating down), this reduces the need for support.
     const F_inertia_moving = m_moving * (CONFIG.g + az);
 
     // F_legs_push: The force the TORSO exerts on the LEGS to drive them.
-    // Free Body Diagram on Moving Mass (Legs + Board):
-    // Upward Forces: Hydro_Lift
-    // Downward Forces: Gravity, Push_from_Torso
-    // Net Acceleration: az
-    // Equation: Hydro - Gravity - Push = m * az
-    // Solve for Push: Push = Hydro - m(g + az)
-    let F_legs_push = F_hydro_z - F_inertia_moving;
-    
-    // CLAMP:
-    // If F_legs_push is negative, it means the board is pulling the legs down 
-    // (or lifting them up faster than they want to go). 
-    // In unstrapped riding, we can't pull up. We just unweight (0 force).
-    // However, with heavy legs, you might actively push them down (positive force)
-    // even if the board is falling, just to keep up with the fall rate!
-    const F_rider_action = Math.max(0, F_legs_push);
+    let F_legs_push = F_hydro_z - F_inertia_moving - added_mass * az;
+    const F_rider_action = Math.max(0, F_legs_push); // Force on feet
 
-    // --- 5. POWER ---
-    // Power = Force * Velocity of Extension
-    // We assume Torso is fixed (V=0). Legs move at vz.
-    // Extension Velocity = -vz (positive when board moves down)
-    let rawPower = F_legs_push * (-vz);
+    // --- 5. MOMENTS (Summed at Center of Lift) ---
     
-    // Filter 1: Only calculate power during the down-stroke (vz < 0).
-    // During up-stroke (vz > 0), we either brake (negative) or phantom-pull (positive), neither of which we want.
-    if (vz > 0) rawPower = 0;
+    // A. Front Wing Moment
+    // By definition, if we pivot at CoL, the moment is 0.
+    const M_front = 0;
+    
+    // B. Stabilizer Moment
+    // Torque = Force * Distance. We define Nose Up as Positive Torque.
+    // Force L_stab_z is usually negative (down). Lever is negative (back).
+    // To get positive torque from downforce on tail: Torque = - (L_stab_z * fuselage_len)
+    const M_stab = -(L_stab_z * CONFIG.fuselage_len);
+    
+    // C. Damping Moment (Water Resistance)
+    const cla_stab = (2 * Math.PI) / (1 + 2 / AR_stab);
+    const damp_constant = 0.5 * CONFIG.rho * vx * CONFIG.S_stab * cla_stab * Math.pow(CONFIG.fuselage_len, 2);
+    // Angular Velocity (approx)
+    const dTheta = -pitch_amp * Math.sin(psi + phase_rad) * dpsi; 
+    const M_damp = -damp_constant * dTheta;
 
-    // Rule 2: ELASTICITY DISCOUNT
-    // We assume 40% of the energy comes from tendon recoil (free).
-    // You only pay for 60% of the mechanical work.
-    let power = Math.max(0, rawPower * CONFIG.elastic_efficiency);
+    // D. Rider Offset Moment (The "Imbalance" variable)
+    // Standing forward (Positive offset) pushes nose DOWN (Negative Torque).
+    const M_rider = -(F_rider_action * CONFIG.rider_offset);
+
+    // Total Moment the Rider must fight
+    const M_total = M_stab + M_damp + M_rider;
+
+    // --- 6. POWER ---
+    
+    // Linear Power
+    let rawLegPower = F_legs_push * (-vz);
+    if (vz > 0) rawLegPower = 0;
+    
+    // Rotational Power
+    // Rider applies counter-torque: -M_total
+    // Use abs() because human muscles consume metabolic energy to resist torque even if technically "absorbing" work.
+    const rotPower = Math.abs(M_total * dTheta);
+
+    // Total Power
+    let power = Math.max(0, rawLegPower * CONFIG.elastic_efficiency) + rotPower;
 
     // Weight Vector (Gravity)
     const Wz = -CONFIG.mass * CONFIG.g;
@@ -796,17 +884,19 @@ function calculatePhysics(t) {
 
     // Calculate Net Force (Sum of all forces)
     // Horizontal Net: Lift_x + Drag_x (Rider and Gravity are vertical)
-    const NetFx = Lx + Dx;
+    const NetFx = Lx + Dx + L_stab_x + D_stab_x;
     // Vertical Net: Lift_z + Drag_z + Gravity + Rider_Push
-    const NetFz = Lz + Dz + Wz;
+    const NetFz = F_hydro_z + Wz;
     
     return {
         x, z, alpha, gamma, theta, vz, az,
         Lx, Lz, Dx, Dz, Rx, Rz, Wz, NetFx, NetFz,
-        thrust: Lx + Dx, 
+        thrust: Lx + Dx + L_stab_x + D_stab_x, 
         riderForce: F_rider_action,
         power: power,
-        rawPower: rawPower
+        rawPower: rawLegPower,
+        L_stab_x, L_stab_z, D_stab_x, D_stab_z,
+        rotPower: rotPower
     };
 }
  
@@ -829,7 +919,7 @@ function drawArrow(ctx, startX, startY, u, v, color, scale, user_scale) {
     ctx.fillStyle = color; ctx.fill();
 }
 
-function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, color2) {
+function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, color2, minScale) {
     const w = ctx.canvas.width;
     const h = ctx.canvas.height;
     
@@ -872,6 +962,8 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
         max2 = Math.max(...data2);
     }
     maxVal = Math.max(max1, max2);
+    
+    if (minScale) maxVal = Math.max(maxVal, minScale);
 
     if (!isFinite(maxVal) || maxVal <= 1) maxVal = 10;
 
@@ -1009,15 +1101,6 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
         ctx.strokeStyle = color2;
         ctx.lineWidth = 2 * scale;
         ctx.stroke();
-
-        // Label for current value of data2
-        const lastVal = data2[data2.length - 1];
-        const py = midY - (lastVal * scaleY);
-        ctx.fillStyle = color2.replace(/[\d.]+\)$/, '1)');
-        ctx.font = "bold " + (9 * scale) + "px " + fontStack;
-        ctx.textAlign = "right";
-        ctx.textBaseline = "middle";
-        ctx.fillText(lastVal.toFixed(0), leftMargin - 6 * scale, py);
     }
 }
 
@@ -1162,6 +1245,12 @@ function updatePhysicsState(dtOverride) {
         state.powerHistory.push(phys.power);
         if (state.powerHistory.length > 1000) state.powerHistory.shift();
         
+        state.linearPowerHistory.push(Math.max(0, phys.rawPower * CONFIG.elastic_efficiency));
+        if (state.linearPowerHistory.length > 1000) state.linearPowerHistory.shift();
+
+        state.rotationalPowerHistory.push(phys.rotPower);
+        if (state.rotationalPowerHistory.length > 1000) state.rotationalPowerHistory.shift();
+        
         // Calculate window (2 cycles) for smoothing
         const cyclePeriod = 1.0 / state.freq;
         const samplesPerCycle = Math.max(1, cyclePeriod / state.dt);
@@ -1289,10 +1378,10 @@ function render(data) {
     
     // Dimensions
     const mastH = 0.85 * PPU;
-    const mastW = 0.06 * PPU;
-    const fuseLen = 0.9 * PPU;
+    const mastW = 0.1 * PPU;
+    const fuseLen = CONFIG.fuselage_len * PPU;
     const fuseRad = 0.015 * PPU;
-    const mastX = -0.15 * PPU; 
+    const mastX = -0.2 * PPU; 
     const boardL = 1.2 * PPU;
     const boardThick = 0.06 * PPU;
 
@@ -1300,10 +1389,10 @@ function render(data) {
         // 1. Mast & Fuselage & Stabilizer
         ctx.fillStyle = '#444';
         
-        // Fuselage (extending backwards from wing)
-        ctx.fillRect(-fuseLen + 0.1*PPU, -fuseRad, fuseLen, fuseRad*2);
-        // Stabilizer (at the back)
-        ctx.beginPath(); ctx.ellipse(-fuseLen + 0.15*PPU, 0, 0.12*PPU, 0.015*PPU, 0, 0, Math.PI*2); ctx.fill();
+        // Fuselage (extending backwards from wing at 0,0)
+        ctx.fillRect(-fuseLen, -fuseRad, fuseLen, fuseRad*2);
+        // Stabilizer (at the back end of fuselage)
+        ctx.beginPath(); ctx.ellipse(-fuseLen, 0, 0.12*PPU, 0.015*PPU, 0, 0, Math.PI*2); ctx.fill();
         // Mast (extending up)
         ctx.fillRect(mastX - mastW/2, -mastH, mastW, mastH);
 
@@ -1321,7 +1410,7 @@ function render(data) {
 
         // Color change for Power Phase
         // Light up when pushing down (Rz < 0) and accelerating downwards (az < 0)
-        const isPowerPhase = (phys.power>0);
+        const isPowerPhase = (phys.rawPower > 0 && phys.az < 0);
         const riderColor = isPowerPhase ? '#f97316' : '#222'; // Orange-500 if powered
 
         ctx.strokeStyle = riderColor; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -1337,8 +1426,8 @@ function render(data) {
         const curLegLen = legLen * (1.0 - 0.35 * crouch);
         
         // Feet positions (Fixed on board)
-        const footRearX = mastX;
-        const footFrontX = mastX + 0.4 * PPU;
+        const footRearX = (CONFIG.rider_offset - 0.2) * PPU;
+        const footFrontX = footRearX + 0.4 * PPU;
 
         // Hip stabilized over front foot (World Up)
         const sinT = Math.sin(phys.theta);
@@ -1397,6 +1486,20 @@ function render(data) {
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
     if (VISIBILITY.weight) drawArrow(ctx, foilCX, foilCY, 0, phys.Wz, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W);
     if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.NetFx, phys.NetFz, 'lime', vecScale, CONFIG.scale_N);
+    
+    if (VISIBILITY.stab) {
+        // Calculate Stabilizer World Position
+        // Local pos: (-CONFIG.fuselage_len, 0)
+        const stabDx = -CONFIG.fuselage_len * Math.cos(phys.theta);
+        const stabDz = -CONFIG.fuselage_len * Math.sin(phys.theta);
+        const stabPX = foilCX + stabDx * PPU;
+        const stabPY = foilCY - stabDz * PPU; // Canvas Y is inverted Z
+        
+        // Draw Stabilizer Force (Lift + Drag)
+        const stabFx = phys.L_stab_x + phys.D_stab_x;
+        const stabFz = phys.L_stab_z + phys.D_stab_z;
+        drawArrow(ctx, stabPX, stabPY, stabFx, stabFz, '#d946ef', vecScale, CONFIG.scale_L);
+    }
 
     ctx.restore();
     
@@ -1405,6 +1508,7 @@ function render(data) {
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
     drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(168, 85, 247, 0.5)");
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Norm (Org) vs Avg (Blu) Power (W)", "rgba(249, 115, 22, 0.5)", null, state.arithmeticAvgPowerHistory, "rgba(59, 130, 246, 0.8)");
+    drawSimpleGraph(ctxPowerComp, state.linearPowerHistory, "Linear (Grn) vs Rotational (Red) Power (W)", "rgba(16, 185, 129, 0.5)", null, state.rotationalPowerHistory, "rgba(239, 68, 68, 0.8)", 250);
 
     // Update avg lift status bar
     const weight = CONFIG.mass * CONFIG.g;
@@ -1459,6 +1563,10 @@ document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.ph
 document.getElementById('in-swing').addEventListener('input', (e) => { CONFIG.swing_weight_ratio = parseFloat(e.target.value); ui.dispSwing.textContent = (CONFIG.swing_weight_ratio * 100).toFixed(0); });
 document.getElementById('in-elastic').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.elastic_efficiency = 1.0 - (val / 100.0); ui.dispElastic.textContent = val.toFixed(0); });
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
+document.getElementById('in-stab-angle').addEventListener('input', (e) => { CONFIG.stab_angle = parseFloat(e.target.value); ui.dispStabAngle.textContent = CONFIG.stab_angle.toFixed(1); });
+document.getElementById('in-stab-area').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.S_stab = val / 10000; ui.dispStabArea.textContent = val.toFixed(0); });
+document.getElementById('in-fuse-len').addEventListener('input', (e) => { CONFIG.fuselage_len = parseFloat(e.target.value); ui.dispFuseLen.textContent = CONFIG.fuselage_len.toFixed(2); });
+document.getElementById('in-offset').addEventListener('input', (e) => { CONFIG.rider_offset = parseFloat(e.target.value); ui.dispOffset.textContent = CONFIG.rider_offset.toFixed(2); });
 
 document.getElementById('btn-optimize').addEventListener('click', () => {
     const btn = document.getElementById('btn-optimize');
@@ -1583,7 +1691,7 @@ function runOptimization() {
     document.getElementById('in-phase').value = bestPhase; ui.dispPhase.textContent = bestPhase.toFixed(0);
     
     // Clear history
-    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = [];
 }
 
 document.getElementById('btn-reset').addEventListener('click', () => {
@@ -1594,16 +1702,20 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.mass = 70.0; document.getElementById('in-mass').value = 70; ui.dispMass.textContent = "70";
     CONFIG.S = 0.135; document.getElementById('in-area').value = 1350; ui.dispArea.textContent = "1350";
     CONFIG.AR = 13.9; document.getElementById('in-ar').value = 13.9; ui.dispAr.textContent = "13.9";
-    CONFIG.Cd0 = 0.015; document.getElementById('in-cd0').value = 0.015; ui.dispCd0.textContent = "0.015";
+    CONFIG.Cd0 = 0.013; document.getElementById('in-cd0').value = 0.013; ui.dispCd0.textContent = "0.013";
     CONFIG.pitch_trim_deg = 3.3; document.getElementById('in-trim').value = 3.3; ui.dispTrim.textContent = "3.3";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     CONFIG.swing_weight_ratio = 0.4; document.getElementById('in-swing').value = 0.4; ui.dispSwing.textContent = "40";
     CONFIG.elastic_efficiency = 1.0; document.getElementById('in-elastic').value = 0; ui.dispElastic.textContent = "0";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
+    CONFIG.stab_angle = -1.0; document.getElementById('in-stab-angle').value = -1.0; ui.dispStabAngle.textContent = "-1.0";
+    CONFIG.S_stab = 0.012; document.getElementById('in-stab-area').value = 120; ui.dispStabArea.textContent = "120";
+    CONFIG.fuselage_len = 0.70; document.getElementById('in-fuse-len').value = 0.70; ui.dispFuseLen.textContent = "0.70";
+    CONFIG.rider_offset = 0.0; document.getElementById('in-offset').value = 0.0; ui.dispOffset.textContent = "0.00";
     
     // Clear history for clean restart
-    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = [];
 });
 
 document.getElementById('btn-replay').addEventListener('click', () => {
@@ -1616,6 +1728,8 @@ document.getElementById('btn-replay').addEventListener('click', () => {
     state.arithmeticAvgPowerHistory = [];
     state.avgThrustHistory = [];
     state.avgLiftHistory = [];
+    state.linearPowerHistory = [];
+    state.rotationalPowerHistory = [];
     state.pathX = [];
     state.pathZ = [];
     state.paused = false;
@@ -1629,6 +1743,7 @@ document.getElementById('chk-thrust').addEventListener('change', (e) => VISIBILI
 document.getElementById('chk-assembly').addEventListener('change', (e) => VISIBILITY.assembly = e.target.checked);
 document.getElementById('chk-weight').addEventListener('change', (e) => VISIBILITY.weight = e.target.checked);
 document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
+document.getElementById('chk-stab').addEventListener('change', (e) => VISIBILITY.stab = e.target.checked);
 
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') state.paused = !state.paused;
@@ -1643,6 +1758,8 @@ window.addEventListener('keydown', (e) => {
                 state.arithmeticAvgPowerHistory.pop();
                 state.avgThrustHistory.pop();
                 state.avgLiftHistory.pop();
+                state.linearPowerHistory.pop();
+                state.rotationalPowerHistory.pop();
                 state.pathX.pop();
                 state.pathZ.pop();
 
