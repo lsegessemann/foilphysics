@@ -443,8 +443,8 @@
                 <input type="range" id="in-swing" min="0.1" max="0.8" step="0.05" value="0.4">
             </div>
             <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
-                <label>System Elasticity: <span id="disp-elastic">30</span>%</label>
-                <input type="range" id="in-elastic" min="0" max="30" step="1" value="30">
+                <label>System Elasticity: <span id="disp-elastic">0</span>%</label>
+                <input type="range" id="in-elastic" min="0" max="30" step="1" value="0">
             </div>
             <div class="control-group" title="Zoom level for the foil visualization.">
                 <label>Visualization Scale: <span id="disp-size">0.40</span></label>
@@ -615,7 +615,7 @@ const CONFIG = {
     pitch_trim_deg: 3.3,    // Base pitch angle in degrees
     phase_shift_deg: 90.0,  // Phase difference between Heave and Pitch
     swing_weight_ratio: 0.4, // Percentage of body mass considered moving (legs)
-    elastic_efficiency: 0.7,  // Rider elastic efficiency
+    elastic_efficiency: 1.0,  // Rider elastic efficiency
     asymmetry_factor: 0.0
 };
 
@@ -1598,7 +1598,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.pitch_trim_deg = 3.3; document.getElementById('in-trim').value = 3.3; ui.dispTrim.textContent = "3.3";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     CONFIG.swing_weight_ratio = 0.4; document.getElementById('in-swing').value = 0.4; ui.dispSwing.textContent = "40";
-    CONFIG.elastic_efficiency = 0.7; document.getElementById('in-elastic').value = 30; ui.dispElastic.textContent = "30";
+    CONFIG.elastic_efficiency = 1.0; document.getElementById('in-elastic').value = 0; ui.dispElastic.textContent = "0";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     
