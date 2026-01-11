@@ -431,6 +431,13 @@
                     </div>
                     <input type="range" id="in-phase" min="85" max="95" step="1" value="90">
                 </div>
+                <div class="control-group" title="Average distance from the water surface to the wing. Lower = Less Drag but Risk of Breach.">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label>Ride Height: <span id="disp-height">0.20</span> m</label>
+                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-height" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
+                    </div>
+                    <input type="range" id="in-height" min="0.10" max="0.80" step="0.01" value="0.20">
+                </div>
             </div>
 
             <!-- GROUP 3: CONFIGURATION -->
@@ -657,6 +664,7 @@ const CONFIG = {
     fuselage_len: 0.70,  // Distance from Mast to Stabilizer (m)
     stab_angle: -1.0,    // Stabilizer incidence angle (degrees) - usually negative!
     rider_offset: 0.0,   // Rider's feet position relative to CoL (m)
+    ride_height: 0.20,   // Average depth of the wing (m)
     
     // Adjustable Parameters
     pitch_trim_deg: 3.3,    // Base pitch angle in degrees
@@ -741,7 +749,8 @@ const ui = {
     dispStabAngle: document.getElementById('disp-stab-angle'),
     dispStabArea: document.getElementById('disp-stab-area'),
     dispFuseLen: document.getElementById('disp-fuse-len'),
-    dispOffset: document.getElementById('disp-offset')
+    dispOffset: document.getElementById('disp-offset'),
+    dispHeight: document.getElementById('disp-height')
 };
 
 // --- PHYSICS ENGINE ---
@@ -789,16 +798,35 @@ function calculatePhysics(t) {
     const alpha = theta - gamma;
     const v_sq = vx*vx + vz*vz;
     
-    // Front Wing Lift & Drag
-    let Cl = (2 * Math.PI * alpha) / (1 + 2 / CONFIG.AR);
-    const k = 1 / (Math.PI * CONFIG.AR);
-    const Cd = CONFIG.Cd0 + k * (Cl * Cl);
+    // --- STALL MODEL (Replaces simple linear calc) ---
+    const stall_angle_deg = 13.0;
+    const stall_rad = stall_angle_deg * (Math.PI / 180);
+    const alpha_abs = Math.abs(alpha);
+    const sign = Math.sign(alpha);
+
+    // Base Lift Slope
+    const lift_slope = (2 * Math.PI) / (1 + 2 / CONFIG.AR);
+    
+    let Cl, Cd_profile;
+
+    if (alpha_abs < stall_rad) {
+        // Linear Region
+        Cl = lift_slope * alpha;
+        const k = 1 / (Math.PI * CONFIG.AR);
+        Cd_profile = CONFIG.Cd0 + k * (Cl * Cl);
+    } else {
+        // Stall Region
+        const max_Cl = lift_slope * stall_rad;
+        Cl = max_Cl * sign; 
+        const excess_rad = alpha_abs - stall_rad;
+        Cd_profile = 0.05 + (excess_rad * 2.0); 
+    }
     
     const L_mag = 0.5 * CONFIG.rho * CONFIG.S * Cl * v_sq;
-    const D_mag = 0.5 * CONFIG.rho * CONFIG.S * Cd * v_sq;
+    const D_mag = 0.5 * CONFIG.rho * CONFIG.S * Cd_profile * v_sq;
     
-    const Lx = -L_mag * Math.sin(gamma); const Lz = L_mag * Math.cos(gamma);
-    const Dx = -D_mag * Math.cos(gamma); const Dz = -D_mag * Math.sin(gamma);
+    let Lx = -L_mag * Math.sin(gamma); let Lz = L_mag * Math.cos(gamma);
+    let Dx = -D_mag * Math.cos(gamma); let Dz = -D_mag * Math.sin(gamma);
     
     // --- 3b. AERODYNAMICS (STABILIZER) ---
     // 1. Calculate Downwash Angle (epsilon) caused by front wing
@@ -818,18 +846,44 @@ function calculatePhysics(t) {
     const L_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * Cl_stab * v_sq;
     
     // Resolve Forces
-    const L_stab_z = L_stab_mag * Math.cos(gamma); 
-    const L_stab_x = -L_stab_mag * Math.sin(gamma);
+    let L_stab_z = L_stab_mag * Math.cos(gamma); 
+    let L_stab_x = -L_stab_mag * Math.sin(gamma);
 
     // Add Stabilizer Drag (Profile drag + Induced)
     const D_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * (0.02 + (Cl_stab*Cl_stab)/(Math.PI*AR_stab)) * v_sq;
-    const D_stab_x = -D_stab_mag * Math.cos(gamma); 
-    const D_stab_z = -D_stab_mag * Math.sin(gamma);
+    let D_stab_x = -D_stab_mag * Math.cos(gamma); 
+    let D_stab_z = -D_stab_mag * Math.sin(gamma);
+
+    // --- 3c. VARIABLE MAST DRAG & SURFACE BREACH ---
+    const mean_depth = CONFIG.ride_height;  
+    let depth = mean_depth - z;
+    
+    // Initialize mast drag components
+    let D_mast_x = 0;
+    let D_mast_z = 0;
+
+    if (depth < 0) {
+        // Breach!
+        Lz = 0; Lx = 0;
+        L_stab_z = 0; L_stab_x = 0;
+        Dz = 0; Dx = 0;
+        D_stab_z = 0; D_stab_x = 0;
+        depth = 0; 
+    }
+
+    // Mast Drag
+    const mast_thick = 0.015;    
+    const Cd_mast = 0.12;        
+    const area_mast = depth * mast_thick;
+    const D_mast_mag = 0.5 * CONFIG.rho * area_mast * Cd_mast * v_sq;
+    
+    D_mast_x = -D_mast_mag * Math.cos(gamma);
+    D_mast_z = -D_mast_mag * Math.sin(gamma);
 
     // --- 4. DYNAMICS & FORCES ---
     
     // Total Vertical Hydro Force
-    const F_hydro_z = Lz + Dz + L_stab_z + D_stab_z;
+    const F_hydro_z = Lz + Dz + L_stab_z + D_stab_z + D_mast_z;
 
     // Wing Geometry (Added Mass)
     const span = Math.sqrt(CONFIG.AR * CONFIG.S);
@@ -892,19 +946,20 @@ function calculatePhysics(t) {
 
     // Calculate Net Force (Sum of all forces)
     // Horizontal Net: Lift_x + Drag_x (Rider and Gravity are vertical)
-    const NetFx = Lx + Dx + L_stab_x + D_stab_x;
+    const NetFx = Lx + Dx + L_stab_x + D_stab_x + D_mast_x;
     // Vertical Net: Lift_z + Drag_z + Gravity + Rider_Push
     const NetFz = F_hydro_z + Wz;
     
     return {
         x, z, alpha, gamma, theta, vz, az,
-        Lx, Lz, Dx, Dz, Rx, Rz, Wz, NetFx, NetFz,
-        thrust: Lx + Dx + L_stab_x + D_stab_x, 
+        Lx, Lz, Dx: Dx + D_mast_x, Dz: Dz + D_mast_z, Rx, Rz, Wz, NetFx, NetFz,
+        thrust: Lx + Dx + L_stab_x + D_stab_x + D_mast_x, 
         riderForce: F_rider_action,
         power: power,
         rawPower: rawLegPower,
         L_stab_x, L_stab_z, D_stab_x, D_stab_z,
-        rotPower: rotPower
+        rotPower: rotPower,
+        isStalled: alpha_abs >= stall_rad
     };
 }
  
@@ -1359,7 +1414,7 @@ function render(data) {
     ctx.moveTo(-10000, 0); ctx.lineTo(10000, 0); ctx.stroke();
     
     // Water Surface
-    const surfaceZ = 0.85 / 2; 
+    const surfaceZ = CONFIG.ride_height; 
     const surfaceY = -surfaceZ * PPU;
     ctx.fillStyle = 'rgba(0, 160, 255, 0.1)';
     ctx.fillRect(camX - 2000, surfaceY, 4000, 1000);
@@ -1509,6 +1564,17 @@ function render(data) {
         drawArrow(ctx, stabPX, stabPY, stabFx, stabFz, '#d946ef', vecScale, CONFIG.scale_L);
     }
 
+    if (phys.isStalled) {
+        ctx.save();
+        if (Math.floor(Date.now() / 150) % 2 === 0) {
+            ctx.fillStyle = "#ef4444";
+            ctx.font = "bold 14px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("⚠️ STALL", foilCX, foilCY - 1.3 * PPU);
+        }
+        ctx.restore();
+    }
+
     ctx.restore();
     
     // Graphs
@@ -1558,7 +1624,16 @@ function render(data) {
 
 // --- LISTENERS ---
 document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(2); });
-document.getElementById('in-amp').addEventListener('input', (e) => { state.heave_amp = parseFloat(e.target.value); ui.dispAmp.textContent = state.heave_amp.toFixed(2); });
+document.getElementById('in-amp').addEventListener('input', (e) => { 
+    let val = parseFloat(e.target.value);
+    if (val > CONFIG.ride_height - 0.02) {
+        CONFIG.ride_height = Math.min(0.80, val + 0.02);
+        document.getElementById('in-height').value = CONFIG.ride_height;
+        ui.dispHeight.textContent = CONFIG.ride_height.toFixed(2);
+    }
+    state.heave_amp = val; 
+    ui.dispAmp.textContent = state.heave_amp.toFixed(2); 
+});
 document.getElementById('in-asym').addEventListener('input', (e) => { CONFIG.asymmetry_factor = parseFloat(e.target.value); ui.dispAsym.textContent = CONFIG.asymmetry_factor.toFixed(2); });
 document.getElementById('in-size').addEventListener('input', (e) => { CONFIG.visual_size_m = parseFloat(e.target.value); ui.dispSize.textContent = CONFIG.visual_size_m.toFixed(2); });
 document.getElementById('in-speed').addEventListener('input', (e) => { const kph = parseFloat(e.target.value); CONFIG.U = kph / 3.6; ui.dispSpeed.textContent = kph.toFixed(1); });
@@ -1575,6 +1650,16 @@ document.getElementById('in-stab-angle').addEventListener('input', (e) => { CONF
 document.getElementById('in-stab-area').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.S_stab = val / 10000; ui.dispStabArea.textContent = val.toFixed(0); });
 document.getElementById('in-fuse-len').addEventListener('input', (e) => { CONFIG.fuselage_len = parseFloat(e.target.value); ui.dispFuseLen.textContent = CONFIG.fuselage_len.toFixed(2); });
 document.getElementById('in-offset').addEventListener('input', (e) => { CONFIG.rider_offset = parseFloat(e.target.value); ui.dispOffset.textContent = CONFIG.rider_offset.toFixed(2); });
+document.getElementById('in-height').addEventListener('input', (e) => { 
+    let val = parseFloat(e.target.value);
+    if (val < state.heave_amp + 0.02) {
+        state.heave_amp = Math.max(0.0, val - 0.02);
+        document.getElementById('in-amp').value = state.heave_amp;
+        ui.dispAmp.textContent = state.heave_amp.toFixed(2);
+    }
+    CONFIG.ride_height = val; 
+    ui.dispHeight.textContent = CONFIG.ride_height.toFixed(2); 
+});
 
 document.getElementById('btn-optimize').addEventListener('click', () => {
     const btn = document.getElementById('btn-optimize');
@@ -1599,6 +1684,7 @@ function runOptimization() {
     const originalTrim = CONFIG.pitch_trim_deg;
     const originalAsym = CONFIG.asymmetry_factor;
     const originalPhase = CONFIG.phase_shift_deg;
+    const originalHeight = CONFIG.ride_height;
 
     // Check locks
     const lockFreq = document.getElementById('lock-freq').checked;
@@ -1606,21 +1692,24 @@ function runOptimization() {
     const lockTrim = document.getElementById('lock-trim').checked;
     const lockAsym = document.getElementById('lock-asym').checked;
     const lockPhase = document.getElementById('lock-phase').checked;
+    const lockHeight = document.getElementById('lock-height').checked;
 
     let bestFreq = originalFreq;
     let bestAmp = originalAmp;
     let bestTrim = originalTrim;
     let bestAsym = originalAsym;
     let bestPhase = originalPhase;
+    let bestHeight = originalHeight;
     let bestCost = Infinity;
 
     // Helper
-    function evaluate(f, a, tr, as, ph) {
+    function evaluate(f, a, tr, as, ph, h) {
         state.freq = f;
         state.heave_amp = a;
         CONFIG.pitch_trim_deg = tr;
         CONFIG.asymmetry_factor = as;
         CONFIG.phase_shift_deg = ph;
+        CONFIG.ride_height = h;
 
         let sumLift = 0;
         let sumThrust = 0;
@@ -1661,14 +1750,26 @@ function runOptimization() {
         let tr = bestTrim + (lockTrim ? 0 : (Math.random() - 0.5) * 5.0 * scale);
         let as = bestAsym + (lockAsym ? 0 : (Math.random() - 0.5) * 0.5 * scale);
         let ph = bestPhase + (lockPhase ? 0 : (Math.random() - 0.5) * 10.0 * scale);
+        let h = bestHeight + (lockHeight ? 0 : (Math.random() - 0.5) * 0.2 * scale);
 
         if (!lockFreq) f = Math.max(0.5, Math.min(2.5, f));
         if (!lockAmp) a = Math.max(0.05, Math.min(0.30, a));
         if (!lockTrim) tr = Math.max(-2.0, Math.min(10.0, tr));
         if (!lockAsym) as = Math.max(0.0, Math.min(0.8, as));
         if (!lockPhase) ph = Math.max(85.0, Math.min(95.0, ph));
+        if (!lockHeight) h = Math.max(0.10, Math.min(0.80, h));
 
-        const r = evaluate(f, a, tr, as, ph);
+        // Enforce Ride Height > Amplitude constraint
+        if (h < a + 0.02) {
+            if (!lockHeight) {
+                h = Math.min(0.80, a + 0.02);
+            }
+            if (h < a + 0.02 && !lockAmp) {
+                a = Math.max(0.05, h - 0.02);
+            }
+        }
+
+        const r = evaluate(f, a, tr, as, ph, h);
         
         if (r.cost < bestCost) {
             bestCost = r.cost;
@@ -1677,6 +1778,7 @@ function runOptimization() {
             bestTrim = tr;
             bestAsym = as;
             bestPhase = ph;
+            bestHeight = h;
             
             if (Math.abs(r.l - targetLift) < liftTolerance && Math.abs(r.t - targetThrust) < thrustTolerance) {
                 break;
@@ -1690,6 +1792,7 @@ function runOptimization() {
     CONFIG.pitch_trim_deg = bestTrim;
     CONFIG.asymmetry_factor = bestAsym;
     CONFIG.phase_shift_deg = bestPhase;
+    CONFIG.ride_height = bestHeight;
 
     // Update UI
     document.getElementById('in-freq').value = bestFreq; ui.dispFreq.textContent = bestFreq.toFixed(2);
@@ -1697,6 +1800,7 @@ function runOptimization() {
     document.getElementById('in-trim').value = bestTrim; ui.dispTrim.textContent = bestTrim.toFixed(1);
     document.getElementById('in-asym').value = bestAsym; ui.dispAsym.textContent = bestAsym.toFixed(2);
     document.getElementById('in-phase').value = bestPhase; ui.dispPhase.textContent = bestPhase.toFixed(0);
+    document.getElementById('in-height').value = bestHeight; ui.dispHeight.textContent = bestHeight.toFixed(2);
     
     // Clear history
     state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = [];
@@ -1713,6 +1817,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.Cd0 = 0.013; document.getElementById('in-cd0').value = 0.013; ui.dispCd0.textContent = "0.013";
     CONFIG.pitch_trim_deg = 3.3; document.getElementById('in-trim').value = 3.3; ui.dispTrim.textContent = "3.3";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
+    document.getElementById('lock-phase').checked = true;
     CONFIG.swing_weight_ratio = 0.4; document.getElementById('in-swing').value = 0.4; ui.dispSwing.textContent = "40";
     CONFIG.elastic_efficiency = 1.0; document.getElementById('in-elastic').value = 0; ui.dispElastic.textContent = "0";
     CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
@@ -1721,6 +1826,8 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.S_stab = 0.012; document.getElementById('in-stab-area').value = 120; ui.dispStabArea.textContent = "120";
     CONFIG.fuselage_len = 0.70; document.getElementById('in-fuse-len').value = 0.70; ui.dispFuseLen.textContent = "0.70";
     CONFIG.rider_offset = 0.0; document.getElementById('in-offset').value = 0.0; ui.dispOffset.textContent = "0.00";
+    CONFIG.ride_height = 0.20; document.getElementById('in-height').value = 0.20; ui.dispHeight.textContent = "0.20";
+    document.getElementById('lock-height').checked = true;
     
     // Clear history for clean restart
     state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = [];
