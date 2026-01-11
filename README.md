@@ -5,7 +5,6 @@ The simulation uses a custom quasi-steady solver that iterates through time step
 ### Simplifications
 - All forces act directly on the front wing, which is assumed to be rigid
 - The indication bars for average lift and thrust indicate whether the pumping motion is actually viable for the selected speed. If they're not balanced / on target, the selected parameters are not in steady state.
-- There is no stabilizer/rear wing modelled
 - The stickfigure is only there for your entertainment - the trajectory of the foil is defined by the frequency and amplitude input.
 
 
@@ -52,14 +51,25 @@ To simulate high-frequency pumping accurately, the system is split into a **Fixe
   $$F_{rider} = \max(0, F_{req})$$
   *(Clamped to 0 to simulate unstrapped riding—the rider cannot pull the board up).*
 
-### 4. Power Calculation
-Power is calculated as the product of the Rider's Force and the Leg Extension Velocity.
+### 3b. Stabilizer & Pitching Moment
+The simulation now includes a rear stabilizer and calculates the torque (Pitching Moment) the rider must manage.
 
-- **Extension Velocity:** $v_{ext} = -v_z$ *(Positive when pushing down)*
-- **Instantaneous Power:**
-  $$P_{inst} = F_{rider} \times v_{ext}$$
-  $$P = \max(0, P_{inst})$$
-  *(Negative power is clamped to 0, assuming the rider does not regenerate energy from the board pushing back).*
+- **Stabilizer Aerodynamics:**
+  - Calculates local Angle of Attack including **Downwash** ($\epsilon$) from the front wing.
+  - Generates Lift ($L_{stab}$) and Drag ($D_{stab}$).
+- **Moment Summation (at Center of Lift):**
+  - **Stabilizer Moment:** $M_{stab} = -L_{stab} \times \text{FuselageLength}$
+  - **Damping Moment:** Resists rotation, calculated from stabilizer geometry and angular velocity.
+  - **Rider Offset Moment:** Torque created if the rider stands forward or aft of the Center of Lift.
+  - **Total Moment:** $M_{total} = M_{stab} + M_{damp} + M_{rider}$
+
+### 4. Power Calculation
+Power is the sum of Linear Power (legs pushing down) and Rotational Power (core/ankles fighting torque).
+
+- **Linear Power:** $P_{linear} = \max(0, F_{rider} \times v_{ext})$
+- **Rotational Power:** $P_{rot} = |M_{total} \times \omega_{pitch}|$
+  *(Absolute value is used because muscles consume energy to resist torque even during eccentric loading).*
+- **Total Power:** $P_{total} = P_{linear} + P_{rot}$
 
 ### 5. Power Metrics (Normalized vs Average)
 - **Average Power:** The arithmetic mean of the power output ($P_{avg} = \frac{1}{N} \sum P$). It represents the total physical work done.
@@ -72,7 +82,6 @@ Power is calculated as the product of the Rider's Force and the Leg Extension Ve
 - **No Stall Characteristics (Linear Lift):** The simulation uses Thin Airfoil Theory ($C_L = 2\pi\alpha$). It assumes lift increases forever as pitch increases. In reality, foils "stall" (lose lift abruptly) around 12–15° Angle of Attack.
   - *Consequence:* The simulation might report that a steep, slow pump is "efficient," whereas in reality, the wing would stall and the rider would crash.
 - **Simplified Drag Model:** Drag is calculated using a simple parabolic polar ($C_D = C_{D0} + k C_L^2$). This ignores "separation drag" at high angles of attack and interference drag between the mast and wing.
-- **No Rear Wing (Stabilizer):** The code explicitly ignores the stabilizer. In reality, the stabilizer creates negative lift to balance the pitching moment, which adds drag and increases the lift requirement for the front wing.
 
 ### 2. Hydrodynamic Limitations
 - **No Surface Ventilation:** The physics engine calculates lift regardless of depth. It does not detect if the wing breaches the surface ($z > 0$).
@@ -88,4 +97,3 @@ Power is calculated as the product of the Rider's Force and the Leg Extension Ve
 
 ### 4. Mathematical Simplifications
 - **Quasi-Steady Assumption:** The solver calculates forces based only on the current instant's velocity and angle. It ignores "unsteady aerodynamics" (Theodorsen effects/Wagner function), where the wake from the previous stroke affects the current lift. This is usually acceptable for low frequencies but becomes inaccurate above ~2-3 Hz.
-- **No Pitching Moment:** The code solves for vertical forces ($F_z$) and forward forces ($F_x$), but ignores the rotational torque (Pitching Moment). In reality, the rider must exert leverage to keep the board level, which is a major source of fatigue.
