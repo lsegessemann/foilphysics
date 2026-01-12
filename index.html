@@ -943,8 +943,8 @@ function calculatePhysics(t) {
     // Calculate Net Force (Sum of all forces)
     // Horizontal Net: Lift_x + Drag_x (Rider and Gravity are vertical)
     const NetFx = Lx + Dx + L_stab_x + D_stab_x + D_mast_x;
-    // Vertical Net: Lift_z + Drag_z + Gravity + Rider_Push
-    const NetFz = F_hydro_z + Wz + Rz;
+    // Vertical Net: Lift_z + Drag_z 
+    const NetFz = F_hydro_z + Wz;
     
     return {
         x, z, alpha, gamma, theta, vz, az,
