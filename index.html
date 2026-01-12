@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=1024, user-scalable=yes">
     <title>Pump Foil Simulator (Angle Telemetry)</title>
     <style>
         body {
@@ -26,6 +26,7 @@
             gap: 5px;
             width: 100%;
             max-width: 900px;
+            min-width: 900px;
         }
 
         .canvas-wrapper {
@@ -140,7 +141,7 @@
         #dashboard-row {
             display: flex;
             flex-direction: row;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 10px;
             width: 100%;
         }
@@ -162,14 +163,6 @@
         }
 
         @media (max-width: 768px) {
-            #dashboard-row {
-                flex-direction: column;
-            }
-            #controls {
-                width: 100%;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-            }
             #ui-overlay {
                 font-size: 11px;
                 padding: 10px;
@@ -328,7 +321,6 @@
             <div id="ui-overlay">
                 <strong>Live Telemetry</strong><br>
                 Time: <span id="val-time">0.00</span> s<br>
-                Speed: <span id="val-speed">18.0</span> km/h<br>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Pitch (vs Horizon): <span id="val-pitch">0.0</span>°<br>
                 <span class="tooltip">AoA (vs Water flow)
@@ -726,7 +718,6 @@ const ctxPowerComp = document.getElementById('graphPowerComp').getContext('2d');
 
 const ui = {
     time: document.getElementById('val-time'),
-    speed: document.getElementById('val-speed'),
     watts: document.getElementById('val-watts'),
     arithAvgWatts: document.getElementById('val-arith-avg-watts'),
     avgWatts: document.getElementById('val-avg-watts'),
@@ -1392,7 +1383,6 @@ function render(data) {
 
     // UI
     ui.time.textContent = state.t.toFixed(2);
-    ui.speed.textContent = (CONFIG.U * 3.6).toFixed(1);
     
     // Update New Angle Displays
     ui.pitch.textContent = (phys.theta * 180 / Math.PI).toFixed(1);
@@ -1743,7 +1733,20 @@ function runOptimization() {
         
         if (isNaN(liftErr) || isNaN(thrustErr)) return { cost: Infinity };
 
-        return { cost: liftErr + thrustErr * 2.0, l: avgLift, t: avgThrust, p: avgPower };
+        // Cost Function with Dead Zone
+        // We allow errors up to a small threshold without penalty.
+        // This lets the optimizer minimize power freely within the valid region.
+        const liftSafe = 2.0; 
+        const thrustSafe = 1.0;
+        
+        const liftPen = Math.max(0, liftErr - liftSafe);
+        const thrustPen = Math.max(0, thrustErr - thrustSafe);
+        
+        // Heavy penalty for leaving the safe zone
+        const cost = avgPower + 10000 * (liftPen + thrustPen);
+        
+        const isValid = (liftErr < liftTolerance && thrustErr < thrustTolerance);
+        return { cost: cost, l: avgLift, t: avgThrust, p: avgPower, valid: isValid };
     }
 
     let bestValidResult = null;
@@ -1761,6 +1764,17 @@ function runOptimization() {
         let currentBestPhase = originalPhase;
         let currentBestHeight = originalHeight;
         let currentBestCost = Infinity;
+
+        // Randomize start point for subsequent attempts to explore broader space
+        if (attempt > 0) {
+            const startScale = 0.5;
+            if (!lockFreq) currentBestFreq += (Math.random() - 0.5) * 1.0 * startScale;
+            if (!lockAmp) currentBestAmp += (Math.random() - 0.5) * 0.1 * startScale;
+            if (!lockTrim) currentBestTrim += (Math.random() - 0.5) * 5.0 * startScale;
+            if (!lockAsym) currentBestAsym += (Math.random() - 0.5) * 0.5 * startScale;
+            if (!lockPhase) currentBestPhase += (Math.random() - 0.5) * 10.0 * startScale;
+            if (!lockHeight) currentBestHeight += (Math.random() - 0.5) * 0.2 * startScale;
+        }
 
         for (let i = 0; i < iterations; i++) {
             const learningRate = 1.0; 
@@ -1796,14 +1810,13 @@ function runOptimization() {
                 currentBestPhase = ph;
                 currentBestHeight = h;
                 
-                if (Math.abs(r.l - targetLift) < liftTolerance && Math.abs(r.t - targetThrust) < thrustTolerance) {
+                if (r.valid) {
                     if (!bestValidResult || r.p < bestValidResult.p) {
                         bestValidResult = {
                             f, a, tr, as, ph, h,
                             p: r.p
                         };
                     }
-                    break; 
                 }
             }
         }
