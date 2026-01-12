@@ -443,7 +443,7 @@
                     <input type="range" id="in-area" min="600" max="2000" step="50" value="1350">
                 </div>
                 <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
-                    <label>Aspect Ratio: <span id="disp-ar">13.9</span></label>
+                    <label>Wing AR: <span id="disp-ar">13.9</span></label>
                     <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.9">
                 </div>
                 <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
@@ -454,13 +454,17 @@
                     <label>Stab Area: <span id="disp-stab-area">120</span> cm²</label>
                     <input type="range" id="in-stab-area" min="0" max="500" step="10" value="120">
                 </div>
+                <div class="control-group" title="Aspect Ratio of the stabilizer. Higher = More Damping (Harder to pump).">
+                    <label>Stab AR: <span id="disp-stab-ar">8.0</span></label>
+                    <input type="range" id="in-stab-ar" min="6.0" max="20.0" step="0.1" value="8.0">
+                </div>
                 <div class="control-group" title="Angle of the rear stabilizer. Negative values create downforce (stability).">
                     <label>Stab Angle: <span id="disp-stab-angle">-1.0</span>°</label>
                     <input type="range" id="in-stab-angle" min="-3.0" max="3.0" step="0.1" value="-1.0">
                 </div>
                 <div class="control-group" title="Distance from the mast/front wing to the stabilizer.">
-                    <label>Fuselage Length: <span id="disp-fuse-len">0.70</span> m</label>
-                    <input type="range" id="in-fuse-len" min="0.10" max="1.00" step="0.01" value="0.70">
+                    <label>Fuselage Length: <span id="disp-fuse-len">0.60</span> m</label>
+                    <input type="range" id="in-fuse-len" min="0.10" max="1.00" step="0.01" value="0.60">
                 </div>
                 <div class="control-group" title="Where the rider stands relative to the Front Wing Lift. Positive = Forward (Nose Down).">
                     <label>Rider Offset: <span id="disp-offset">0.00</span> m</label>
@@ -656,7 +660,8 @@ const CONFIG = {
     
     // --- ADD THESE NEW LINES ---
     S_stab: 0.012,       // Stabilizer Area in m2 (e.g., 250cm2)
-    fuselage_len: 0.70,  // Distance from Mast to Stabilizer (m)
+    AR_stab: 8.0,        // Stabilizer Aspect Ratio
+    fuselage_len: 0.60,  // Distance from Mast to Stabilizer (m)
     stab_angle: -1.0,    // Stabilizer incidence angle (degrees) - usually negative!
     rider_offset: 0.0,   // Rider's feet position relative to CoL (m)
     ride_height: 0.20,   // Average depth of the wing (m)
@@ -742,6 +747,7 @@ const ui = {
     dispElastic: document.getElementById('disp-elastic'),
     dispStabAngle: document.getElementById('disp-stab-angle'),
     dispStabArea: document.getElementById('disp-stab-area'),
+    dispStabAr: document.getElementById('disp-stab-ar'),
     dispFuseLen: document.getElementById('disp-fuse-len'),
     dispOffset: document.getElementById('disp-offset'),
     dispHeight: document.getElementById('disp-height')
@@ -835,7 +841,7 @@ function calculatePhysics(t) {
     const alpha_stab = theta + stab_rad - gamma - epsilon;
     
     // 3. Stabilizer Lift (Usually Downforce, so likely negative)
-    const AR_stab = 4.0;
+    const AR_stab = CONFIG.AR_stab; 
     const Cl_stab = (2 * Math.PI * alpha_stab) / (1 + 2 / AR_stab);
     const L_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * Cl_stab * v_sq;
     
@@ -1643,6 +1649,7 @@ document.getElementById('in-elastic').addEventListener('input', (e) => { const v
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
 document.getElementById('in-stab-angle').addEventListener('input', (e) => { CONFIG.stab_angle = parseFloat(e.target.value); ui.dispStabAngle.textContent = CONFIG.stab_angle.toFixed(1); });
 document.getElementById('in-stab-area').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.S_stab = val / 10000; ui.dispStabArea.textContent = val.toFixed(0); });
+document.getElementById('in-stab-ar').addEventListener('input', (e) => { CONFIG.AR_stab = parseFloat(e.target.value); ui.dispStabAr.textContent = CONFIG.AR_stab.toFixed(1); });
 document.getElementById('in-fuse-len').addEventListener('input', (e) => { CONFIG.fuselage_len = parseFloat(e.target.value); ui.dispFuseLen.textContent = CONFIG.fuselage_len.toFixed(2); });
 document.getElementById('in-offset').addEventListener('input', (e) => { CONFIG.rider_offset = parseFloat(e.target.value); ui.dispOffset.textContent = CONFIG.rider_offset.toFixed(2); });
 document.getElementById('in-height').addEventListener('input', (e) => { 
@@ -1871,7 +1878,8 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
     CONFIG.stab_angle = -1.0; document.getElementById('in-stab-angle').value = -1.0; ui.dispStabAngle.textContent = "-1.0";
     CONFIG.S_stab = 0.012; document.getElementById('in-stab-area').value = 120; ui.dispStabArea.textContent = "120";
-    CONFIG.fuselage_len = 0.70; document.getElementById('in-fuse-len').value = 0.70; ui.dispFuseLen.textContent = "0.70";
+    CONFIG.AR_stab = 8.0; document.getElementById('in-stab-ar').value = 8.0; ui.dispStabAr.textContent = "8.0";
+    CONFIG.fuselage_len = 0.60; document.getElementById('in-fuse-len').value = 0.60; ui.dispFuseLen.textContent = "0.60";
     CONFIG.rider_offset = 0.0; document.getElementById('in-offset').value = 0.0; ui.dispOffset.textContent = "0.00";
     CONFIG.ride_height = 0.20; document.getElementById('in-height').value = 0.20; ui.dispHeight.textContent = "0.20";
     document.getElementById('lock-height').checked = true;
