@@ -3,7 +3,7 @@
 The simulation uses a custom quasi-steady solver that iterates through time steps ($dt$) to calculate forces and rider power.
 
 ### Simplifications
-- All forces act directly on the front wing, which is assumed to be rigid
+ - Forces are calculated for the front wing, rear stabilizer, and mast
 - The indication bars for average lift and thrust indicate whether the pumping motion is actually viable for the selected speed. If they're not balanced / on target, the selected parameters are not in steady state.
 - The stickfigure is only there for your entertainment - the trajectory of the foil is defined by the frequency and amplitude input.
 
@@ -36,6 +36,12 @@ Lift and Drag are calculated using **Thin Airfoil Theory**, corrected for a fini
 - **Hydrodynamic Force (Vertical Component):**
   $$F_{hydro\_z} = L \cos(\gamma) - D \sin(\gamma)$$
 
+### 2b. Mast Drag & Ventilation
+To increase realism, the simulation accounts for the mast's drag and surface effects.
+
+- **Mast Drag:** Calculated based on the submerged length of the mast at each time step.
+- **Ventilation:** If the wing approaches or breaches the surface ($z > 0$), the lift coefficient is penalized to simulate air entrainment (ventilation), preventing the rider from generating power above the water.
+
 ### 3. Dynamics (Two-Mass Model)
 To simulate high-frequency pumping accurately, the system is split into a **Fixed Mass** (Torso) and a **Moving Mass** (Legs + Board). This prevents the "zero power" error seen in single-point mass models when acceleration exceeds gravity.
 
@@ -45,9 +51,12 @@ To simulate high-frequency pumping accurately, the system is split into a **Fixe
 - **Inertial Requirement:**
   The force required to accelerate the legs and board:
   $$F_{inertia} = m_{moving} (g + a_z)$$
+- **Hydrodynamic Added Mass:**
+  Accelerating the wing moves a volume of water with it. This "virtual mass" is added to the inertial requirement. It is scaled by $\cos^2(\theta)$ because added mass acts perpendicular to the wing surface.
+  $$m_{added} = \rho \pi (c/2)^2 b \cos^2(\theta)$$
 - **Rider Force ($F_{rider}$):**
   The rider must push down to bridge the gap between the Water Force and the Inertial Force.
-  $$F_{req} = F_{hydro\_z} - F_{inertia}$$
+  $$F_{req} = F_{hydro\_z} - F_{inertia} - m_{added} a_z$$
   $$F_{rider} = \max(0, F_{req})$$
   *(Clamped to 0 to simulate unstrapped riding—the rider cannot pull the board up).*
 
@@ -81,19 +90,13 @@ Power is the sum of Linear Power (legs pushing down) and Rotational Power (core/
 ### 1. Aerodynamic Limitations
 - **No Stall Characteristics (Linear Lift):** The simulation uses Thin Airfoil Theory ($C_L = 2\pi\alpha$). It assumes lift increases forever as pitch increases. In reality, foils "stall" (lose lift abruptly) around 12–15° Angle of Attack.
   - *Consequence:* The simulation might report that a steep, slow pump is "efficient," whereas in reality, the wing would stall and the rider would crash.
-- **Simplified Drag Model:** Drag is calculated using a simple parabolic polar ($C_D = C_{D0} + k C_L^2$). This ignores "separation drag" at high angles of attack and interference drag between the mast and wing.
+- **Simplified Drag Model:** Drag is calculated using a simple parabolic polar ($C_D = C_{D0} + k C_L^2$). While mast drag is included, interference drag between components is ignored.
 
-### 2. Hydrodynamic Limitations
-- **No Surface Ventilation:** The physics engine calculates lift regardless of depth. It does not detect if the wing breaches the surface ($z > 0$).
-  - *Consequence:* The simulation allows the rider to pump 1 meter above the water surface with full lift, which is physically impossible.
-- **Missing "Added Mass":** Accelerating a wing underwater requires moving the water around it (virtual mass). The code accounts for the board and leg mass ($m_{moving}$), but ignores the hydrodynamic added mass.
-  - *Consequence:* High-frequency pumping requires significantly more energy in reality than this simulation predicts.
-
-### 3. Biomechanical Limitations
+### 2. Biomechanical Limitations
 - **Infinite Muscle Strength:** The rider is modeled as an ideal force generator. The simulation might say "Requires 1200 Watts," but it doesn't know that a human cannot generate 1200 Watts. It does not implement Hill's Muscle Equation (the trade-off between force and speed).
 - **Perfectly Rigid Transmission:** The "Two-Mass Model" assumes the board and legs move as one solid unit relative to the water forces. It ignores the flex of the mast and the fuselage, which can dampen energy transfer.
 - **Forced Kinematics (The "Rail" Effect):** The motion is defined by math ($z = A \cos(\omega t)$), not by forces. The board is essentially moving on a predefined invisible rail.
   - *Consequence:* If the rider stops pedaling (power = 0), the simulation doesn't show the board slowing down or sinking; it just shows "Rider Force = 0". The board never "crashes."
 
-### 4. Mathematical Simplifications
+### 3. Mathematical Simplifications
 - **Quasi-Steady Assumption:** The solver calculates forces based only on the current instant's velocity and angle. It ignores "unsteady aerodynamics" (Theodorsen effects/Wagner function), where the wake from the previous stroke affects the current lift. This is usually acceptable for low frequencies but becomes inaccurate above ~2-3 Hz.

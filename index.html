@@ -512,7 +512,7 @@
 
                 <h3>Simplifications</h3>
                 <ul>
-                    <li>All forces act directly on the front wing, which is assumed to be rigid</li>
+                    <li>Forces are calculated for the front wing, rear stabilizer, and mast</li>
                     <li>The indication bars for average lift and thrust indicate whether the pumping motion is actually viable for the selected speed. If they're not balanced / on target, the selected parameters are not in steady state.</li>
                     <li>The stickfigure is only there for your entertainment - the trajectory of the foil is defined by the frequency and amplitude input.</li>
                 </ul>
@@ -549,6 +549,13 @@
                     <i>F<sub>hydro_z</sub> = L cos(&gamma;) - D sin(&gamma;)</i></li>
                 </ul>
 
+                <h3>2b. Mast Drag & Ventilation</h3>
+                <p>To increase realism, the simulation accounts for the mast's drag and surface effects.</p>
+                <ul>
+                    <li><strong>Mast Drag:</strong> Calculated based on the submerged length of the mast at each time step.</li>
+                    <li><strong>Ventilation:</strong> If the wing approaches or breaches the surface (<i>z &gt; 0</i>), the lift coefficient is penalized to simulate air entrainment (ventilation), preventing the rider from generating power above the water.</li>
+                </ul>
+
                 <h3>3. Dynamics (Two-Mass Model)</h3>
                 <p>To simulate high-frequency pumping accurately, the system is split into a <strong>Fixed Mass</strong> (Torso) and a <strong>Moving Mass</strong> (Legs + Board). This prevents the "zero power" error seen in single-point mass models when acceleration exceeds gravity.</p>
 
@@ -559,9 +566,12 @@
                     <li><strong>Inertial Requirement:</strong><br>
                     The force required to accelerate the legs and board:<br>
                     <i>F<sub>inertia</sub> = m<sub>moving</sub> (g + a<sub>z</sub>)</i></li>
+                    <li><strong>Hydrodynamic Added Mass:</strong><br>
+                    Accelerating the wing moves a volume of water with it. This "virtual mass" is added to the inertial requirement. It is scaled by <i>cos<sup>2</sup>(&theta;)</i> because added mass acts perpendicular to the wing surface.<br>
+                    <i>m<sub>added</sub> = &rho; &pi; (c/2)<sup>2</sup> b cos<sup>2</sup>(&theta;)</i></li>
                     <li><strong>Rider Force (<i>F<sub>rider</sub></i>):</strong><br>
                     The rider must push down to bridge the gap between the Water Force and the Inertial Force.<br>
-                    <i>F<sub>req</sub> = F<sub>hydro_z</sub> - F<sub>inertia</sub></i><br>
+                    <i>F<sub>req</sub> = F<sub>hydro_z</sub> - F<sub>inertia</sub> - m<sub>added</sub> a<sub>z</sub></i><br>
                     <i>F<sub>rider</sub> = max(0, F<sub>req</sub>)</i><br>
                     <em>(Clamped to 0 to simulate unstrapped riding—the rider cannot pull the board up).</em></li>
                 </ul>
@@ -570,12 +580,15 @@
                 <p>The simulation now includes a rear stabilizer and calculates the torque (Pitching Moment) the rider must manage.</p>
                 <ul>
                     <li><strong>Stabilizer Aerodynamics:</strong><br>
-                    Calculates local Angle of Attack including <strong>Downwash</strong> (<i>&epsilon;</i>) from the front wing to generate Lift and Drag.</li>
+                    Calculates local Angle of Attack including <strong>Downwash</strong> (<i>&epsilon;</i>) from the front wing.<br>
+                    Generates Lift (<i>L<sub>stab</sub></i>) and Drag (<i>D<sub>stab</sub></i>).</li>
                     <li><strong>Moment Summation (at Center of Lift):</strong><br>
-                    The rider must balance three main torques:<br>
-                    1. <strong>Stabilizer Moment:</strong> <i>M<sub>stab</sub> = -L<sub>stab</sub> &times; FuselageLength</i><br>
-                    2. <strong>Damping Moment:</strong> Resists rotation, calculated from stabilizer geometry and angular velocity.<br>
-                    3. <strong>Rider Offset Moment:</strong> Torque created if the rider stands forward or aft of the Center of Lift.</li>
+                    <ul>
+                        <li><strong>Stabilizer Moment:</strong> <i>M<sub>stab</sub> = -L<sub>stab</sub> &times; FuselageLength</i></li>
+                        <li><strong>Damping Moment:</strong> Resists rotation, calculated from stabilizer geometry and angular velocity.</li>
+                        <li><strong>Rider Offset Moment:</strong> Torque created if the rider stands forward or aft of the Center of Lift.</li>
+                        <li><strong>Total Moment:</strong> <i>M<sub>total</sub> = M<sub>stab</sub> + M<sub>damp</sub> + M<sub>rider</sub></i></li>
+                    </ul></li>
                 </ul>
 
                 <h3>4. Power Calculation</h3>
@@ -607,20 +620,10 @@
                     The simulation uses Thin Airfoil Theory (<i>C<sub>L</sub> = 2&pi;&alpha;</i>). It assumes lift increases forever as pitch increases. In reality, foils "stall" (lose lift abruptly) around 12–15&deg; Angle of Attack.<br>
                     <em>Consequence: The simulation might report that a steep, slow pump is "efficient," whereas in reality, the wing would stall and the rider would crash.</em></li>
                     <li><strong>Simplified Drag Model:</strong><br>
-                    Drag is calculated using a simple parabolic polar (<i>C<sub>D</sub> = C<sub>D0</sub> + k C<sub>L</sub><sup>2</sup></i>). This ignores "separation drag" at high angles of attack and interference drag between the mast and wing.</li>
+                    Drag is calculated using a simple parabolic polar (<i>C<sub>D</sub> = C<sub>D0</sub> + k C<sub>L</sub><sup>2</sup></i>). While mast drag is included, interference drag between components is ignored.</li>
                 </ul>
 
-                <h3>2. Hydrodynamic Limitations</h3>
-                <ul>
-                    <li><strong>No Surface Ventilation:</strong><br>
-                    The physics engine calculates lift regardless of depth. It does not detect if the wing breaches the surface (<i>z &gt; 0</i>).<br>
-                    <em>Consequence: The simulation allows the rider to pump 1 meter above the water surface with full lift, which is physically impossible.</em></li>
-                    <li><strong>Missing "Added Mass":</strong><br>
-                    Accelerating a wing underwater requires moving the water around it (virtual mass). The code accounts for the board and leg mass (<i>m<sub>moving</sub></i>), but ignores the hydrodynamic added mass.<br>
-                    <em>Consequence: High-frequency pumping requires significantly more energy in reality than this simulation predicts.</em></li>
-                </ul>
-
-                <h3>3. Biomechanical Limitations</h3>
+                <h3>2. Biomechanical Limitations</h3>
                 <ul>
                     <li><strong>Infinite Muscle Strength:</strong><br>
                     The rider is modeled as an ideal force generator. The simulation might say "Requires 1200 Watts," but it doesn't know that a human cannot generate 1200 Watts. It does not implement Hill's Muscle Equation (the trade-off between force and speed).</li>
@@ -631,7 +634,7 @@
                     <em>Consequence: If the rider stops pedaling (power = 0), the simulation doesn't show the board slowing down or sinking; it just shows "Rider Force = 0". The board never "crashes."</em></li>
                 </ul>
 
-                <h3>4. Mathematical Simplifications</h3>
+                <h3>3. Mathematical Simplifications</h3>
                 <ul>
                     <li><strong>Quasi-Steady Assumption:</strong><br>
                     The solver calculates forces based only on the current instant's velocity and angle. It ignores "unsteady aerodynamics" (Theodorsen effects/Wagner function), where the wake from the previous stroke affects the current lift. This is usually acceptable for low frequencies but becomes inaccurate above ~2-3 Hz.</li>
@@ -883,19 +886,21 @@ function calculatePhysics(t) {
     // --- 4. DYNAMICS & FORCES ---
     
     // Total Vertical Hydro Force
+    // Note: This includes Circulatory Lift & Drag, but EXCLUDES Added Mass (which is modeled as inertia)
     const F_hydro_z = Lz + Dz + L_stab_z + D_stab_z + D_mast_z;
 
     // Wing Geometry (Added Mass)
     const span = Math.sqrt(CONFIG.AR * CONFIG.S);
     const chord = CONFIG.S / span;
-    const added_mass = CONFIG.rho * Math.PI * Math.pow(chord / 2, 2) * span;
+    const m_33 = CONFIG.rho * Math.PI * Math.pow(chord / 2, 2) * span;
+    const added_mass = m_33 * Math.pow(Math.cos(theta), 2);
 
     // F_inertia_moving: Force needed to accelerate Board + Legs
     const F_inertia_moving = m_moving * (CONFIG.g + az);
 
     // F_legs_push: The force the TORSO exerts on the LEGS to drive them.
     let F_legs_push = F_hydro_z - F_inertia_moving - added_mass * az;
-    const F_rider_action = Math.max(0, F_legs_push); // Force on feet
+    const F_rider_action = Math.max(0, F_legs_push); 
 
     // --- 5. MOMENTS (Summed at Center of Lift) ---
     
@@ -948,7 +953,7 @@ function calculatePhysics(t) {
     // Horizontal Net: Lift_x + Drag_x (Rider and Gravity are vertical)
     const NetFx = Lx + Dx + L_stab_x + D_stab_x + D_mast_x;
     // Vertical Net: Lift_z + Drag_z + Gravity + Rider_Push
-    const NetFz = F_hydro_z + Wz;
+    const NetFz = F_hydro_z + Wz + Rz;
     
     return {
         x, z, alpha, gamma, theta, vz, az,
