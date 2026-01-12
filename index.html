@@ -1718,6 +1718,7 @@ function runOptimization() {
 
         let sumLift = 0;
         let sumThrust = 0;
+        let sumPower = 0;
         let count = 0;
         
         const period = 1.0 / f;
@@ -1729,83 +1730,111 @@ function runOptimization() {
             const phys = calculatePhysics(t);
             sumLift += (phys.Lz + phys.Dz);
             sumThrust += phys.thrust;
+            sumPower += phys.power;
             count++;
         }
 
         const avgLift = sumLift / count;
         const avgThrust = sumThrust / count;
+        const avgPower = sumPower / count;
 
         const liftErr = Math.abs(avgLift - targetLift);
         const thrustErr = Math.abs(avgThrust - targetThrust);
         
-        if (isNaN(liftErr) || isNaN(thrustErr)) return Infinity;
+        if (isNaN(liftErr) || isNaN(thrustErr)) return { cost: Infinity };
 
-        return { cost: liftErr + thrustErr * 2.0, l: avgLift, t: avgThrust };
+        return { cost: liftErr + thrustErr * 2.0, l: avgLift, t: avgThrust, p: avgPower };
     }
 
-    // Optimization Loop
+    let bestValidResult = null;
+    let bestFallbackResult = null;
+    let bestFallbackCost = Infinity;
+
+    const attempts = 30;
     const iterations = 1500;
-    const learningRate = 1.0; 
 
-    for (let i = 0; i < iterations; i++) {
-        const scale = learningRate * Math.max(0.1, (1 - i/iterations));
+    for (let attempt = 0; attempt < attempts; attempt++) {
+        let currentBestFreq = originalFreq;
+        let currentBestAmp = originalAmp;
+        let currentBestTrim = originalTrim;
+        let currentBestAsym = originalAsym;
+        let currentBestPhase = originalPhase;
+        let currentBestHeight = originalHeight;
+        let currentBestCost = Infinity;
 
-        let f = bestFreq + (lockFreq ? 0 : (Math.random() - 0.5) * 1.0 * scale);
-        let a = bestAmp + (lockAmp ? 0 : (Math.random() - 0.5) * 0.1 * scale);
-        let tr = bestTrim + (lockTrim ? 0 : (Math.random() - 0.5) * 5.0 * scale);
-        let as = bestAsym + (lockAsym ? 0 : (Math.random() - 0.5) * 0.5 * scale);
-        let ph = bestPhase + (lockPhase ? 0 : (Math.random() - 0.5) * 10.0 * scale);
-        let h = bestHeight + (lockHeight ? 0 : (Math.random() - 0.5) * 0.2 * scale);
+        for (let i = 0; i < iterations; i++) {
+            const learningRate = 1.0; 
+            const scale = learningRate * Math.max(0.1, (1 - i/iterations));
 
-        if (!lockFreq) f = Math.max(0.5, Math.min(2.5, f));
-        if (!lockAmp) a = Math.max(0.05, Math.min(0.30, a));
-        if (!lockTrim) tr = Math.max(-2.0, Math.min(10.0, tr));
-        if (!lockAsym) as = Math.max(0.0, Math.min(0.8, as));
-        if (!lockPhase) ph = Math.max(85.0, Math.min(95.0, ph));
-        if (!lockHeight) h = Math.max(0.10, Math.min(0.80, h));
+            let f = currentBestFreq + (lockFreq ? 0 : (Math.random() - 0.5) * 1.0 * scale);
+            let a = currentBestAmp + (lockAmp ? 0 : (Math.random() - 0.5) * 0.1 * scale);
+            let tr = currentBestTrim + (lockTrim ? 0 : (Math.random() - 0.5) * 5.0 * scale);
+            let as = currentBestAsym + (lockAsym ? 0 : (Math.random() - 0.5) * 0.5 * scale);
+            let ph = currentBestPhase + (lockPhase ? 0 : (Math.random() - 0.5) * 10.0 * scale);
+            let h = currentBestHeight + (lockHeight ? 0 : (Math.random() - 0.5) * 0.2 * scale);
 
-        // Enforce Ride Height > Amplitude constraint
-        if (h < a + 0.02) {
-            if (!lockHeight) {
-                h = Math.min(0.80, a + 0.02);
+            if (!lockFreq) f = Math.max(0.5, Math.min(2.5, f));
+            if (!lockAmp) a = Math.max(0.05, Math.min(0.30, a));
+            if (!lockTrim) tr = Math.max(-2.0, Math.min(10.0, tr));
+            if (!lockAsym) as = Math.max(0.0, Math.min(0.8, as));
+            if (!lockPhase) ph = Math.max(85.0, Math.min(95.0, ph));
+            if (!lockHeight) h = Math.max(0.10, Math.min(0.80, h));
+
+            if (h < a + 0.02) {
+                if (!lockHeight) h = Math.min(0.80, a + 0.02);
+                if (h < a + 0.02 && !lockAmp) a = Math.max(0.05, h - 0.02);
             }
-            if (h < a + 0.02 && !lockAmp) {
-                a = Math.max(0.05, h - 0.02);
+
+            const r = evaluate(f, a, tr, as, ph, h);
+            
+            if (r.cost < currentBestCost) {
+                currentBestCost = r.cost;
+                currentBestFreq = f;
+                currentBestAmp = a;
+                currentBestTrim = tr;
+                currentBestAsym = as;
+                currentBestPhase = ph;
+                currentBestHeight = h;
+                
+                if (Math.abs(r.l - targetLift) < liftTolerance && Math.abs(r.t - targetThrust) < thrustTolerance) {
+                    if (!bestValidResult || r.p < bestValidResult.p) {
+                        bestValidResult = {
+                            f, a, tr, as, ph, h,
+                            p: r.p
+                        };
+                    }
+                    break; 
+                }
             }
         }
 
-        const r = evaluate(f, a, tr, as, ph, h);
-        
-        if (r.cost < bestCost) {
-            bestCost = r.cost;
-            bestFreq = f;
-            bestAmp = a;
-            bestTrim = tr;
-            bestAsym = as;
-            bestPhase = ph;
-            bestHeight = h;
-            
-            if (Math.abs(r.l - targetLift) < liftTolerance && Math.abs(r.t - targetThrust) < thrustTolerance) {
-                break;
-            }
+        if (currentBestCost < bestFallbackCost) {
+            bestFallbackCost = currentBestCost;
+            bestFallbackResult = {
+                f: currentBestFreq, a: currentBestAmp, tr: currentBestTrim, 
+                as: currentBestAsym, ph: currentBestPhase, h: currentBestHeight
+            };
         }
     }
 
-    // Apply
-    state.freq = bestFreq;
-    state.heave_amp = bestAmp;
-    CONFIG.pitch_trim_deg = bestTrim;
-    CONFIG.asymmetry_factor = bestAsym;
-    CONFIG.phase_shift_deg = bestPhase;
-    CONFIG.ride_height = bestHeight;
+    const finalResult = bestValidResult || bestFallbackResult;
+
+    if (finalResult) {
+        state.freq = finalResult.f;
+        state.heave_amp = finalResult.a;
+        CONFIG.pitch_trim_deg = finalResult.tr;
+        CONFIG.asymmetry_factor = finalResult.as;
+        CONFIG.phase_shift_deg = finalResult.ph;
+        CONFIG.ride_height = finalResult.h;
+    }
 
     // Update UI
-    document.getElementById('in-freq').value = bestFreq; ui.dispFreq.textContent = bestFreq.toFixed(2);
-    document.getElementById('in-amp').value = bestAmp; ui.dispAmp.textContent = bestAmp.toFixed(2);
-    document.getElementById('in-trim').value = bestTrim; ui.dispTrim.textContent = bestTrim.toFixed(1);
-    document.getElementById('in-asym').value = bestAsym; ui.dispAsym.textContent = bestAsym.toFixed(2);
-    document.getElementById('in-phase').value = bestPhase; ui.dispPhase.textContent = bestPhase.toFixed(0);
-    document.getElementById('in-height').value = bestHeight; ui.dispHeight.textContent = bestHeight.toFixed(2);
+    document.getElementById('in-freq').value = state.freq; ui.dispFreq.textContent = state.freq.toFixed(2);
+    document.getElementById('in-amp').value = state.heave_amp; ui.dispAmp.textContent = state.heave_amp.toFixed(2);
+    document.getElementById('in-trim').value = CONFIG.pitch_trim_deg; ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1);
+    document.getElementById('in-asym').value = CONFIG.asymmetry_factor; ui.dispAsym.textContent = CONFIG.asymmetry_factor.toFixed(2);
+    document.getElementById('in-phase').value = CONFIG.phase_shift_deg; ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0);
+    document.getElementById('in-height').value = CONFIG.ride_height; ui.dispHeight.textContent = CONFIG.ride_height.toFixed(2);
     
     // Clear history
     state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = [];

@@ -1,0 +1,171 @@
+/**
+ * PUMP FOIL SIMULATOR - MASTER VALIDATION SUITE (Fixed Reset)
+ * Includes fix for Asymmetry persistence bug
+ */
+
+(function runMasterSuite() {
+    console.clear();
+    console.log("%c🧪 STARTING MASTER VALIDATION SUITE (Fixed)...", "color: #2563eb; font-weight: bold; font-size: 16px; margin-bottom: 10px;");
+    
+    let passCount = 0;
+    let failCount = 0;
+
+    // ==========================================
+    // 1. HELPER FUNCTIONS
+    // ==========================================
+    function resetSim() {
+        CONFIG.mass = 70; CONFIG.g = 9.81; CONFIG.rho = 1000; CONFIG.S = 0.135; 
+        CONFIG.Cd0 = 0.013; CONFIG.AR = 13.9; CONFIG.U = 5.55; 
+        
+        // State Resets
+        state.freq = 0; 
+        state.heave_amp = 0; 
+        
+        // CONFIG Resets (CRITICAL FIXES HERE)
+        CONFIG.pitch_trim_deg = 0;
+        CONFIG.asymmetry_factor = 0.0; // <--- FIX: Ensure wave is symmetric for tests
+        CONFIG.phase_shift_deg = 90.0; // Standard phase
+        CONFIG.elastic_efficiency = 1.0;
+        
+        CONFIG.stab_angle = 0; CONFIG.S_stab = 0; CONFIG.fuselage_len = 0.7; CONFIG.ride_height = 0.2;
+    }
+
+    function assert(testName, actual, expected, tolerance = 0.01) {
+        if (typeof expected === 'boolean') {
+            if (actual === expected) { console.log(`%c✔ PASS: ${testName}`, "color: green"); passCount++; }
+            else { console.log(`%c✘ FAIL: ${testName}`, "color: red; font-weight: bold"); failCount++; }
+            return;
+        }
+        const diff = Math.abs(actual - expected);
+        if (diff <= tolerance) { console.log(`%c✔ PASS: ${testName}`, "color: green"); passCount++; }
+        else { console.log(`%c✘ FAIL: ${testName}`, "color: red; font-weight: bold"); console.log(`   Expected: ${expected}`); console.log(`   Actual:   ${actual}`); failCount++; }
+    }
+
+    // ==========================================
+    // 2. BASIC PHYSICS TESTS
+    // ==========================================
+    console.log("%c--- PHASE 1: AERODYNAMICS ---", "color: #555; font-weight: bold;");
+
+    resetSim(); assert("Static Lift at 0° AoA is 0", calculatePhysics(0).Lz, 0);
+    
+    resetSim(); CONFIG.pitch_trim_deg = 2.0; 
+    const expLift = 0.5 * CONFIG.rho * CONFIG.S * ((2 * Math.PI * (2*Math.PI/180)) / (1 + 2/CONFIG.AR)) * (CONFIG.U * CONFIG.U);
+    assert(`Lift at 2° matches Linear Theory`, calculatePhysics(0).Lz, expLift, 1.0);
+
+    resetSim(); CONFIG.ride_height = 0.2; 
+    const k = 1 / (Math.PI * CONFIG.AR); const cl = (2 * Math.PI * (2*Math.PI/180)) / (1 + 2/CONFIG.AR);
+    const d_wing = 0.5 * CONFIG.rho * CONFIG.S * (CONFIG.Cd0 + k * cl*cl) * CONFIG.U**2;
+    const d_mast = 0.5 * CONFIG.rho * (0.2 * 0.015) * 0.12 * CONFIG.U**2;
+    CONFIG.pitch_trim_deg = 2.0; 
+    assert(`Total Drag at 2° (Wing + Mast)`, Math.abs(calculatePhysics(0).Dx), d_wing + d_mast, 0.5);
+
+    resetSim(); CONFIG.ride_height = 0.2; state.heave_amp = 0.3; 
+    assert("Lift drops to 0 when breached", calculatePhysics(0).Lz, 0);
+
+    resetSim(); CONFIG.pitch_trim_deg = 15.0; 
+    assert("Stall Flag is TRUE at 15°", calculatePhysics(0).isStalled, true);
+
+    resetSim(); CONFIG.S_stab = 0.025; CONFIG.stab_angle = -2.0; 
+    assert("Stabilizer generates Downforce (< 0)", calculatePhysics(0).L_stab_z < -1.0, true);
+
+    // ==========================================
+    // 3. DYNAMICS TESTS
+    // ==========================================
+    console.log("%c--- PHASE 2: DYNAMICS & POWER ---", "color: #555; font-weight: bold; margin-top: 10px;");
+
+    // TEST 7 & 8: Kinematics (Now safe from asymmetry)
+    resetSim(); state.freq = 1.0; state.heave_amp = 0.5;
+    assert("Kinematics: t=0, z = +Amp", calculatePhysics(0).z, 0.5);
+    assert("Kinematics: t=0.5, z = -Amp", calculatePhysics(0.5).z, -0.5);
+
+    resetSim(); state.freq = 2.0; state.heave_amp = 0.1;
+    assert("Instant Power generated (> 0)", calculatePhysics(0.05).power > 10, true);
+
+    // Test 10: Mass vs Power
+    function getTrimmedPower(m) {
+        resetSim(); CONFIG.mass = m; state.freq = 1.5; state.heave_amp = 0.20;
+        const w = m * 9.81; const q = 0.5 * 1000 * 0.135 * 5.55**2;
+        CONFIG.pitch_trim_deg = ((w/q) / ((2*Math.PI)/(1+2/13.9))) * (180/Math.PI);
+        let s=0; const steps=50; for(let i=0;i<steps;i++) s+=calculatePhysics(i*0.02).power;
+        return s/steps;
+    }
+    const p60 = getTrimmedPower(60.0); const p80 = getTrimmedPower(80.0);
+    assert("Heavier rider requires more Power", p80 > p60, true);
+
+    // ==========================================
+    // 4. OPTIMIZER STRESS TEST (100 RUNS)
+    // ==========================================
+    console.log("%c--- PHASE 3: OPTIMIZER STRESS TEST (100 Runs) ---", "color: #555; font-weight: bold; margin-top: 10px;");
+    console.log("   ⏳ Crunching numbers (this may take 1-2 seconds)...");
+
+    function findBalancedState(runIndex) {
+        resetSim();
+        const targetLift = CONFIG.mass * CONFIG.g;
+        
+        state.freq = 1.0 + Math.random();
+        state.heave_amp = 0.1 + Math.random()*0.1;
+        CONFIG.pitch_trim_deg = Math.random() * 5.0; 
+        
+        let bestCost = Infinity; let bestPower = Infinity;
+        
+        for (let i = 0; i < 150; i++) {
+            const oldFreq = state.freq; const oldAmp = state.heave_amp; const oldTrim = CONFIG.pitch_trim_deg;
+            const scale = Math.max(0.1, 1.0 - (i/150));
+            state.freq += (Math.random()-0.5) * 1.0 * scale;
+            state.heave_amp += (Math.random()-0.5) * 0.05 * scale;
+            CONFIG.pitch_trim_deg += (Math.random()-0.5) * 2.0 * scale;
+            
+            state.freq = Math.max(0.5, Math.min(2.5, state.freq));
+            state.heave_amp = Math.max(0.05, Math.min(0.3, state.heave_amp));
+            
+            let sL=0, sT=0, sP=0; const steps = 12; const dt = (1.0/state.freq)/steps;
+            for(let k=0; k<steps; k++) {
+                const p = calculatePhysics(k*dt); sL += p.Lz + p.Dz; sT += p.thrust; sP += p.power;
+            }
+            const cost = Math.abs(sL/steps - targetLift) + Math.abs(sT/steps)*3.0 + (sP/steps * 0.01);
+            
+            if (cost < bestCost) { bestCost = cost; bestPower = sP/steps; } 
+            else { state.freq = oldFreq; state.heave_amp = oldAmp; CONFIG.pitch_trim_deg = oldTrim; }
+        }
+        return { power: bestPower, cost: bestCost, valid: bestCost < 30.0 };
+    }
+
+    // --- EXECUTE 100 RUNS ---
+    const RUNS = 100;
+    let results = [];
+    const startTime = performance.now();
+    for(let r=0; r<RUNS; r++) results.push(findBalancedState(r));
+    const endTime = performance.now();
+    console.log(`   ⏱️ Completed in ${((endTime-startTime)/1000).toFixed(2)}s`);
+
+    results.sort((a,b) => {
+        if (a.valid === b.valid) return a.power - b.power; 
+        return b.valid - a.valid; 
+    });
+
+    console.log("   🏆 TOP 20 RESULTS:");
+    console.table(results.slice(0, 20).map((r, i) => ({
+        Rank: i+1, "Power (W)": r.power.toFixed(1), "Valid?": r.valid ? "YES" : "NO", "Cost": r.cost.toFixed(1)
+    })));
+
+    const validRuns = results.filter(r => r.valid).length;
+    
+    assert(`Optimizer convergence rate (${validRuns}/${RUNS}) >= 50%`, validRuns >= (RUNS/2), true);
+    
+    if(validRuns > 0) {
+        const bestP = results[0].power;
+        assert("Best VALID solution is realistic (100W-600W)", (bestP > 100 && bestP < 600), true);
+        console.log(`   🏆 Absolute Best Power: ${bestP.toFixed(1)} W`);
+    } else {
+        console.log("%c   ⚠️ No valid runs found.", "color: orange");
+    }
+
+    // ==========================================
+    // SUMMARY
+    // ==========================================
+    console.log("--------------------------------------------------");
+    const total = passCount + failCount;
+    if (failCount === 0) console.log(`%c✅ SUCCESS: ALL ${passCount} TESTS PASSED.`, "color: green; font-weight: bold; font-size: 16px;");
+    else console.log(`%c❌ FAILURE: ${failCount} / ${total} TESTS FAILED.`, "color: red; font-weight: bold; font-size: 16px;");
+
+})();
