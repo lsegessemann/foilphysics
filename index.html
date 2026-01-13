@@ -77,7 +77,7 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            width: 240px;
+            width: 300px;
             box-sizing: border-box;
         }
 
@@ -342,8 +342,10 @@
                     <input type="checkbox" id="chk-slowmo" style="cursor: pointer;">
                     <label for="chk-slowmo" style="cursor: pointer; user-select: none;">Slow Motion</label>
                 </div>
-                <div style="font-size: 9px; color: #555; font-weight: normal;">
-                    <kbd>SPACE</kbd> Pause &nbsp; <kbd>&larr;</kbd> Rewind &nbsp; <kbd>&rarr;</kbd> Forward
+                <div style="font-size: 9px; color: #555; font-weight: normal; display: flex; gap: 10px;">
+                    <span id="cmd-pause" style="cursor: pointer; user-select: none;" title="Toggle Pause"><kbd>SPACE</kbd> Pause</span>
+                    <span id="cmd-rewind" style="cursor: pointer; user-select: none;" title="Step Back"><kbd>&larr;</kbd> Rewind</span>
+                    <span id="cmd-forward" style="cursor: pointer; user-select: none;" title="Step Forward"><kbd>&rarr;</kbd> Forward</span>
                 </div>
             </div>
             <div id="visibility-controls">
@@ -381,25 +383,29 @@
                 <div class="canvas-wrapper">
                     <canvas id="graphPowerComp" width="1300" height="260"></canvas>
                 </div>
-            </div>
-            
-            <div id="controls">
-            <!-- GROUP: PRESETS -->
-            <div style="background-color: #fff7ed; padding: 8px; border-radius: 6px; border: 1px solid #ffedd5; display: flex; flex-direction: column; gap: 8px;">
-                <div class="control-group" title="Save and load configurations.">
-                    <label>Presets</label>
-                    <div style="display:flex; gap:5px;">
-                        <select id="preset-select" style="flex:1; font-size:11px; padding:4px; border-radius:4px; border:1px solid #ccc;">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div style="display:flex; gap:5px; margin-top:4px;">
-                        <button id="btn-save-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#d97706;">SAVE</button>
-                        <button id="btn-delete-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#dc2626;">DELETE</button>
+
+                <!-- GROUP: PRESETS (Moved) -->
+                <div style="background-color: #fff7ed; padding: 8px; border-radius: 6px; border: 1px solid #ffedd5; display: flex; flex-direction: column; gap: 8px;">
+                    <div class="control-group" title="Save and load configurations.">
+                        <label>Presets</label>
+                        <div style="display:flex; gap:5px;">
+                            <select id="preset-select" style="flex:1; font-size:11px; padding:4px; border-radius:4px; border:1px solid #ccc;">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:5px; margin-top:4px;">
+                            <button id="btn-save-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#d97706;">SAVE</button>
+                            <button id="btn-delete-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#dc2626;">DELETE</button>
+                            <button id="btn-download-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#2563eb;">DOWNLOAD</button>
+                            <button id="btn-upload-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#059669;">UPLOAD</button>
+                            <button id="btn-reset-presets" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#4b5563;" title="Restore default presets">RESET</button>
+                        </div>
+                        <input type="file" id="file-upload-preset" style="display:none" accept=".json">
                     </div>
                 </div>
             </div>
-
+            
+            <div id="controls">
             <!-- GROUP 1: SPEED -->
             <div style="background-color: #f0f9ff; padding: 8px; border-radius: 6px; border: 1px solid #bae6fd; display: flex; flex-direction: column; gap: 8px;">
                 <div class="control-group" title="Forward velocity of the rider.">
@@ -453,6 +459,8 @@
                     <input type="range" id="in-height" min="0.10" max="0.80" step="0.01" value="0.20">
                 </div>
             </div>
+
+            <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
 
             <!-- GROUP 3: CONFIGURATION -->
             <div style="background-color: #fdf4ff; padding: 8px; border-radius: 6px; border: 1px solid #f0abfc; display: flex; flex-direction: column; gap: 8px;">
@@ -510,7 +518,6 @@
                 </div>
             </div>
             
-            <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
             <div style="display: flex; gap: 8px; margin-top: 5px;">
                 <button id="btn-reset" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">RESET</button>
                 <button id="btn-replay" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">REPLAY</button>
@@ -1934,37 +1941,47 @@ document.getElementById('chk-weight').addEventListener('change', (e) => VISIBILI
 document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
 document.getElementById('chk-stab').addEventListener('change', (e) => VISIBILITY.stab = e.target.checked);
 
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') state.paused = !state.paused;
-    if (state.paused) {
-        if (e.code === 'ArrowRight') render(updatePhysicsState());
-        if (e.code === 'ArrowLeft') {
-            if (state.thrustHistory.length > 0) {
-                state.liftHistory.pop();
-                state.thrustHistory.pop();
-                state.powerHistory.pop();
-                state.avgPowerHistory.pop();
-                state.arithmeticAvgPowerHistory.pop();
-                state.avgThrustHistory.pop();
-                state.avgLiftHistory.pop();
-                state.linearPowerHistory.pop();
-                state.rotationalPowerHistory.pop();
-                state.pathX.pop();
-                state.pathZ.pop();
+function togglePause() { state.paused = !state.paused; }
 
-                state.t -= state.dt;
-                state.historyTimer = 0;
+function stepForward() {
+    if (state.paused) render(updatePhysicsState());
+}
 
-                render({ 
-                    phys: calculatePhysics(state.t), 
-                    avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
-                    arithmeticAvgPower: state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length-1] || 0,
-                    avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0,
-                    avgLift: state.avgLiftHistory[state.avgLiftHistory.length-1] || 0
-                });
-            }
-        }
+function stepBackward() {
+    if (state.paused && state.thrustHistory.length > 0) {
+        state.liftHistory.pop();
+        state.thrustHistory.pop();
+        state.powerHistory.pop();
+        state.avgPowerHistory.pop();
+        state.arithmeticAvgPowerHistory.pop();
+        state.avgThrustHistory.pop();
+        state.avgLiftHistory.pop();
+        state.linearPowerHistory.pop();
+        state.rotationalPowerHistory.pop();
+        state.pathX.pop();
+        state.pathZ.pop();
+
+        state.t -= state.dt;
+        state.historyTimer = 0;
+
+        render({ 
+            phys: calculatePhysics(state.t), 
+            avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
+            arithmeticAvgPower: state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length-1] || 0,
+            avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0,
+            avgLift: state.avgLiftHistory[state.avgLiftHistory.length-1] || 0
+        });
     }
+}
+
+document.getElementById('cmd-pause').addEventListener('click', togglePause);
+document.getElementById('cmd-rewind').addEventListener('click', stepBackward);
+document.getElementById('cmd-forward').addEventListener('click', stepForward);
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') togglePause();
+    if (e.code === 'ArrowRight') stepForward();
+    if (e.code === 'ArrowLeft') stepBackward();
 });
 
 let lastTime = 0;
@@ -1988,32 +2005,42 @@ function loop(timestamp) {
 // --- PRESETS SYSTEM ---
 const PRESET_KEY = 'foil_sim_presets';
 const DEFAULT_PRESETS = {
-    "Standard (70kg)": {
-        speed: 20.0, freq: 1.65, amp: 0.13, asym: 0.0, trim: 3.3, phase: 90, height: 0.20,
-        mass: 70, area: 1350, ar: 13.9, cd0: 0.013,
+    "Standard (80kg)": {
+        speed: 17.0, freq: 1.13, amp: 0.18, asym: 0.08, trim: 4.6, phase: 90, height: 0.20,
+        mass: 80, area: 1400, ar: 13.9, cd0: 0.013,
         stabArea: 120, stabAr: 8.0, stabAngle: -1.0, fuseLen: 0.60, offset: 0.0,
         swing: 0.4, elastic: 0, size: 0.4
     },
     "Beginner (Slow/Stable)": {
-        speed: 15.0, freq: 1.40, amp: 0.10, asym: 0.0, trim: 4.5, phase: 90, height: 0.20,
-        mass: 75, area: 1800, ar: 9.0, cd0: 0.018,
+        speed: 15.0, freq: 1.18, amp: 0.18, asym: 0.0, trim: 5.0, phase: 90, height: 0.3,
+        mass: 75, area: 1800, ar: 11.5, cd0: 0.018,
         stabArea: 250, stabAr: 6.0, stabAngle: -2.0, fuseLen: 0.70, offset: 0.05,
-        swing: 0.3, elastic: 0, size: 0.4
+        swing: 0.4, elastic: 0, size: 0.4
     },
-    "Pro (High Aspect)": {
-        speed: 25.0, freq: 2.10, amp: 0.18, asym: 0.3, trim: 2.0, phase: 90, height: 0.20,
-        mass: 70, area: 900, ar: 18.0, cd0: 0.010,
-        stabArea: 80, stabAr: 12.0, stabAngle: -0.5, fuseLen: 0.55, offset: -0.05,
-        swing: 0.5, elastic: 10, size: 0.4
+   
+    "@foilien": {
+        speed: 17.0, freq: 1.12, amp: 0.18, asym: 0.16, trim: 4.5, phase: 90, height: 0.20,
+        mass: 80, area: 1300, ar: 13.9, cd0: 0.013,
+        stabArea: 120, stabAr: 8.0, stabAngle: -1.0, fuseLen: 0.60, offset: 0.0,
+        swing: 0.4, elastic: 0, size: 0.4
     }
 };
 
 function getPresets() {
+    let presets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
     try {
         const stored = localStorage.getItem(PRESET_KEY);
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+            const storedPresets = JSON.parse(stored);
+            Object.keys(storedPresets).forEach(k => {
+                // Only load custom presets from storage to allow code updates to defaults
+                if (!DEFAULT_PRESETS[k]) {
+                    presets[k] = storedPresets[k];
+                }
+            });
+        }
     } catch(e) { console.error(e); }
-    return JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+    return presets;
 }
 
 function savePresets(presets) {
@@ -2145,6 +2172,52 @@ document.getElementById('btn-delete-preset').addEventListener('click', () => {
         const presets = getPresets();
         delete presets[sel.value];
         savePresets(presets);
+    }
+});
+
+document.getElementById('btn-download-preset').addEventListener('click', () => {
+    const state = captureCurrentState();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "foil_preset.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+});
+
+document.getElementById('btn-upload-preset').addEventListener('click', () => {
+    document.getElementById('file-upload-preset').click();
+});
+
+document.getElementById('file-upload-preset').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            const name = prompt("Name for imported preset?", file.name.replace('.json',''));
+            if(name) {
+                const presets = getPresets();
+                presets[name] = data;
+                savePresets(presets);
+                document.getElementById('preset-select').value = name;
+                applyPresetState(data);
+            }
+        } catch(err) {
+            console.error(err);
+            alert("Invalid JSON file");
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+});
+
+document.getElementById('btn-reset-presets').addEventListener('click', () => {
+    if (confirm("Reset all presets? This will remove custom saved presets.")) {
+        localStorage.removeItem(PRESET_KEY);
+        renderPresetDropdown();
     }
 });
 
