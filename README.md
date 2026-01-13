@@ -33,8 +33,9 @@ Lift and Drag are calculated using **Thin Airfoil Theory**, corrected for a fini
   $$C_L = \frac{2 \pi \alpha}{1 + 2/AR}$$
 - **Drag Coefficient ($C_D$):**
   $$C_D = C_{D0} + k C_L^2 \quad \text{where} \quad k \approx \frac{1}{\pi AR}$$
-- **Hydrodynamic Force (Vertical Component):**
-  $$F_{hydro\_z} = L \cos(\gamma) - D \sin(\gamma)$$
+- **Total Hydrodynamic Force (Vertical):**
+  $$F_{hydro\_z} = F_{wing\_z} + F_{stab\_z} + F_{mast\_z}$$
+  (Sum of all vertical forces).
 - **Stall Model:**
   Beyond a critical angle (~13°), the lift coefficient saturates and drag increases significantly to simulate stalling.
 
@@ -66,13 +67,11 @@ To simulate high-frequency pumping accurately, the system is split into a **Fixe
 The simulation now includes a rear stabilizer and calculates the torque (Pitching Moment) the rider must manage.
 
 - **Stabilizer Aerodynamics:**
-  - Calculates local Angle of Attack including **Downwash** ($\epsilon$) from the front wing.
-  - Generates Lift ($L_{stab}$) and Drag ($D_{stab}$).
+  - Calculates local Angle of Attack based on the **Local Velocity Vector** at the tail ($v_{z\_stab} = v_z - \omega_{pitch} \times \text{FuselageLength}$). This accounts for **Downwash** and naturally provides **Pitch Damping** without artificial terms.
 - **Moment Summation (at Center of Lift):**
   - **Stabilizer Moment:** $M_{stab} = -L_{stab} \times \text{FuselageLength}$
-  - **Damping Moment:** Resists rotation, calculated from stabilizer geometry and angular velocity.
   - **Rider Offset Moment:** Torque created if the rider stands forward or aft of the Center of Lift.
-  - **Total Moment:** $M_{total} = M_{stab} + M_{damp} + M_{rider}$
+  - **Total Moment:** $M_{total} = M_{stab} + M_{rider}$
 
 ### 4. Power Calculation
 Power is the sum of Linear Power (legs pushing down) and Rotational Power (core/ankles fighting torque).

@@ -353,10 +353,11 @@
                 <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
                 <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
                 <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
-                <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> Gravity</label>
+                <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> G-Force</label>
                 <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Board+Rider</label>
                 <label class="legend-item"><input type="checkbox" id="chk-stab" checked><div class="dot" style="background: #d946ef;"></div> Stabilizer</label>
                 <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: lime; border:1px solid #333;"></div> Net Force</label>
+                <label class="legend-item" title="Toggle between accurate 1:1 scaling and exaggerated scaling for small forces"><input type="checkbox" id="chk-true-scale" checked> True Scale</label>
             </div>
         </div>
 
@@ -568,8 +569,8 @@
                     <i>C<sub>L</sub> = (2 &pi; &alpha;) / (1 + 2/AR)</i></li>
                     <li><strong>Drag Coefficient (<i>C<sub>D</sub></i>):</strong><br>
                     <i>C<sub>D</sub> = C<sub>D0</sub> + k C<sub>L</sub><sup>2</sup></i> &emsp; where &emsp; <i>k &approx; 1 / (&pi; AR)</i></li>
-                    <li><strong>Hydrodynamic Force (Vertical Component):</strong><br>
-                    <i>F<sub>hydro_z</sub> = L cos(&gamma;) - D sin(&gamma;)</i></li>
+                    <li><strong>Total Hydrodynamic Force (Vertical):</strong><br>
+                    <i>F<sub>hydro_z</sub> = F<sub>wing_z</sub> + F<sub>stab_z</sub> + F<sub>mast_z</sub></i> (Sum of all vertical forces).</li>
                     <li><strong>Stall Model:</strong><br>
                     Beyond a critical angle (~13&deg;), the lift coefficient saturates and drag increases significantly to simulate stalling.</li>
                 </ul>
@@ -605,14 +606,12 @@
                 <p>The simulation now includes a rear stabilizer and calculates the torque (Pitching Moment) the rider must manage.</p>
                 <ul>
                     <li><strong>Stabilizer Aerodynamics:</strong><br>
-                    Calculates local Angle of Attack including <strong>Downwash</strong> (<i>&epsilon;</i>) from the front wing.<br>
-                    Generates Lift (<i>L<sub>stab</sub></i>) and Drag (<i>D<sub>stab</sub></i>).</li>
+                    Calculates local Angle of Attack based on the <strong>Local Velocity Vector</strong> at the tail (<i>v<sub>z_stab</sub> = v<sub>z</sub> - &omega;<sub>pitch</sub> &times; FuselageLength</i>). This accounts for <strong>Downwash</strong> and naturally provides <strong>Pitch Damping</strong> without artificial terms.</li>
                     <li><strong>Moment Summation (at Center of Lift):</strong><br>
                     <ul>
                         <li><strong>Stabilizer Moment:</strong> <i>M<sub>stab</sub> = -L<sub>stab</sub> &times; FuselageLength</i></li>
-                        <li><strong>Damping Moment:</strong> Resists rotation, calculated from stabilizer geometry and angular velocity.</li>
                         <li><strong>Rider Offset Moment:</strong> Torque created if the rider stands forward or aft of the Center of Lift.</li>
-                        <li><strong>Total Moment:</strong> <i>M<sub>total</sub> = M<sub>stab</sub> + M<sub>damp</sub> + M<sub>rider</sub></i></li>
+                        <li><strong>Total Moment:</strong> <i>M<sub>total</sub> = M<sub>stab</sub> + M<sub>rider</sub></i></li>
                     </ul></li>
                 </ul>
 
@@ -681,7 +680,7 @@ const CONFIG = {
     g: 9.81,             // Gravity (m/s²)
     visual_size_m: 0.4,  // Visual scale for foil chord length
     // Scales
-    scale_L: 0.5, scale_D: 5.0, scale_T: 1.0, scale_R: 0.5, scale_N: 0.5, scale_W: 0.5,
+    scale_L: 0.5, scale_D: 0.5, scale_T: 0.5, scale_R: 0.5, scale_N: 0.5, scale_W: 0.5, scale_Stab_L: 0.5, scale_Stab_D: 0.5,
     AR: 13.9,            // Aspect Ratio (Span² / Area)
     
     // --- ADD THESE NEW LINES ---
@@ -816,6 +815,9 @@ function calculatePhysics(t) {
     // Pitch follows the warped phase to stay in sync
     const theta = pitch_trim + pitch_amp * Math.cos(psi + phase_rad);
 
+    // Pitch Angular Velocity (rad/s)
+    const dTheta = -pitch_amp * Math.sin(psi + phase_rad) * dpsi;
+
     // --- 3. AERODYNAMICS (FRONT WING) ---
     const x = CONFIG.U * t;
     const vx = CONFIG.U;
@@ -860,25 +862,29 @@ function calculatePhysics(t) {
     const epsilon = (2 * Cl) / (Math.PI * CONFIG.AR);
     
     // 2. Local Angle of Attack for Stabilizer
-    // Alpha_stab = BoardPitch + StabAngle - FlightPathAngle - Downwash
-    // Note: theta (pitch) is the board angle. 
-    // We assume the fuselage is rigid, so stab sees the same theta, modified by downwash.
+    // We calculate the actual vertical velocity at the stabilizer, accounting for pitch rotation.
+    // vz_stab = vz_front_wing - (angular_velocity * fuselage_length)
+    const vz_stab = vz - (dTheta * CONFIG.fuselage_len);
+    const gamma_stab = Math.atan2(vz_stab, vx);
+
+    // Alpha_stab = BoardPitch + StabAngle - FlightPathAngle_Stab - Downwash
     const stab_rad = CONFIG.stab_angle * (Math.PI / 180);
-    const alpha_stab = theta + stab_rad - gamma - epsilon;
+    const alpha_stab = theta + stab_rad - gamma_stab - epsilon;
     
     // 3. Stabilizer Lift (Usually Downforce, so likely negative)
     const AR_stab = CONFIG.AR_stab; 
     const Cl_stab = (2 * Math.PI * alpha_stab) / (1 + 2 / AR_stab);
-    const L_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * Cl_stab * v_sq;
+    const v_sq_stab = vx*vx + vz_stab*vz_stab; // Local velocity squared
+    const L_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * Cl_stab * v_sq_stab;
     
-    // Resolve Forces
-    let L_stab_z = L_stab_mag * Math.cos(gamma); 
-    let L_stab_x = -L_stab_mag * Math.sin(gamma);
+    // Resolve Forces (using gamma_stab)
+    let L_stab_z = L_stab_mag * Math.cos(gamma_stab); 
+    let L_stab_x = -L_stab_mag * Math.sin(gamma_stab);
 
     // Add Stabilizer Drag (Profile drag + Induced)
-    const D_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * (0.02 + (Cl_stab*Cl_stab)/(Math.PI*AR_stab)) * v_sq;
-    let D_stab_x = -D_stab_mag * Math.cos(gamma); 
-    let D_stab_z = -D_stab_mag * Math.sin(gamma);
+    const D_stab_mag = 0.5 * CONFIG.rho * CONFIG.S_stab * (0.02 + (Cl_stab*Cl_stab)/(Math.PI*AR_stab)) * v_sq_stab;
+    let D_stab_x = -D_stab_mag * Math.cos(gamma_stab); 
+    let D_stab_z = -D_stab_mag * Math.sin(gamma_stab);
 
     // --- 3c. VARIABLE MAST DRAG & SURFACE BREACH ---
     const mean_depth = CONFIG.ride_height;  
@@ -911,6 +917,7 @@ function calculatePhysics(t) {
     // Total Vertical Hydro Force
     // Note: This includes Circulatory Lift & Drag, but EXCLUDES Added Mass (which is modeled as inertia)
     const F_hydro_z = Lz + Dz + L_stab_z + D_stab_z + D_mast_z;
+    const F_hydro_x = Lx + Dx + L_stab_x + D_stab_x + D_mast_x;
 
     // Wing Geometry (Added Mass)
     const span = Math.sqrt(CONFIG.AR * CONFIG.S);
@@ -937,19 +944,13 @@ function calculatePhysics(t) {
     // To get positive torque from downforce on tail: Torque = - (L_stab_z * fuselage_len)
     const M_stab = -(L_stab_z * CONFIG.fuselage_len);
     
-    // C. Damping Moment (Water Resistance)
-    const cla_stab = (2 * Math.PI) / (1 + 2 / AR_stab);
-    const damp_constant = 0.5 * CONFIG.rho * vx * CONFIG.S_stab * cla_stab * Math.pow(CONFIG.fuselage_len, 2);
-    // Angular Velocity (approx)
-    const dTheta = -pitch_amp * Math.sin(psi + phase_rad) * dpsi; 
-    const M_damp = -damp_constant * dTheta;
 
     // D. Rider Offset Moment (The "Imbalance" variable)
     // Standing forward (Positive offset) pushes nose DOWN (Negative Torque).
     const M_rider = -(F_rider_action * CONFIG.rider_offset);
 
     // Total Moment the Rider must fight
-    const M_total = M_stab + M_damp + M_rider;
+    const M_total = M_stab + M_rider;
 
     // --- 6. POWER ---
     
@@ -967,6 +968,7 @@ function calculatePhysics(t) {
 
     // Weight Vector (Gravity)
     const Wz = -CONFIG.mass * CONFIG.g;
+    const W_apparent_z = -CONFIG.mass * (CONFIG.g + az);
 
     // --- 6. OUTPUTS ---
     const Rx = 0; 
@@ -974,20 +976,21 @@ function calculatePhysics(t) {
 
     // Calculate Net Force (Sum of all forces)
     // Horizontal Net: Lift_x + Drag_x (Rider and Gravity are vertical)
-    const NetFx = Lx + Dx + L_stab_x + D_stab_x + D_mast_x;
+    const NetFx = F_hydro_x;
     // Vertical Net: Lift_z + Drag_z 
     const NetFz = F_hydro_z + Wz;
     
     return {
         x, z, alpha, gamma, theta, vz, az,
-        Lx, Lz, Dx: Dx + D_mast_x, Dz: Dz + D_mast_z, Rx, Rz, Wz, NetFx, NetFz,
-        thrust: Lx + Dx + L_stab_x + D_stab_x + D_mast_x, 
+        Lx, Lz, Dx: Dx + D_mast_x, Dz: Dz + D_mast_z, Rx, Rz, Wz, W_apparent_z, NetFx, NetFz,
+        thrust: F_hydro_x, 
         riderForce: F_rider_action,
         power: power,
         rawPower: rawLegPower,
         L_stab_x, L_stab_z, D_stab_x, D_stab_z,
         rotPower: rotPower,
-        isStalled: alpha_abs >= stall_rad
+        isStalled: alpha_abs >= stall_rad,
+        F_hydro_z, F_hydro_x
     };
 }
  
@@ -1327,7 +1330,7 @@ function updatePhysicsState(dtOverride) {
         const phys = calculatePhysics(state.t); // Recalculate for the new time
         
         // --- Update History Arrays ---
-        state.liftHistory.push(phys.Lz);
+        state.liftHistory.push(phys.F_hydro_z);
         if (state.liftHistory.length > 1000) state.liftHistory.shift();
         
         state.thrustHistory.push(phys.thrust);
@@ -1462,6 +1465,10 @@ function render(data) {
     
     const foilCX = phys.x * PPU; const foilCY = -phys.z * PPU;
     
+    // Chest position for G-Force vector (defaults to foil center)
+    let chestX = foilCX;
+    let chestY = foilCY;
+
     // Foil
     // Foil Assembly (Rigid Body)
     ctx.save(); ctx.translate(foilCX, foilCY); ctx.rotate(-phys.theta); 
@@ -1474,6 +1481,14 @@ function render(data) {
     const mastX = -0.2 * PPU; 
     const boardL = 1.2 * PPU;
     const boardThick = 0.06 * PPU;
+
+    // Calculate Rider Force Attachment Point (Feet Center)
+    const rSinT = Math.sin(phys.theta);
+    const rCosT = Math.cos(phys.theta);
+    const localFeetX = CONFIG.rider_offset * PPU;
+    const localFeetY = -mastH - boardThick;
+    const riderForceX = foilCX + (localFeetX * rCosT + localFeetY * rSinT);
+    const riderForceY = foilCY + (-localFeetX * rSinT + localFeetY * rCosT);
 
     if (VISIBILITY.assembly) {
         // 1. Mast & Fuselage & Stabilizer
@@ -1580,6 +1595,15 @@ function render(data) {
 
         ctx.beginPath(); ctx.moveTo(lShoulderX, lShoulderY); ctx.lineTo(lArmX, lArmY); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(rShoulderX, rShoulderY); ctx.lineTo(rArmX, rArmY); ctx.stroke();
+        
+        // Calculate Chest Position (World Space) for G-Force Vector
+        // Local Chest is midpoint of torso
+        const localChestX = (hipX + shoulderX) / 2;
+        const localChestY = (hipY + shoulderY) / 2;
+        
+        // Transform Local -> World (Rotation is -phys.theta)
+        chestX = foilCX + (localChestX * cosT + localChestY * sinT);
+        chestY = foilCY + (-localChestX * sinT + localChestY * cosT);
     }
 
     // 3. Main Wing (NACA Profile) - Centered at (0,0)
@@ -1598,11 +1622,11 @@ function render(data) {
     if (VISIBILITY.rider) {
         // Only draw if there is significant force
         if (Math.abs(phys.Rz) > 1) {
-            drawArrow(ctx, foilCX, foilCY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R);
+            drawArrow(ctx, riderForceX, riderForceY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R);
         }
     }
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
-    if (VISIBILITY.weight) drawArrow(ctx, foilCX, foilCY, 0, phys.Wz, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W);
+    if (VISIBILITY.weight) drawArrow(ctx, chestX, chestY, 0, phys.W_apparent_z, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W);
     if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.NetFx, phys.NetFz, 'lime', vecScale, CONFIG.scale_N);
     
     if (VISIBILITY.stab) {
@@ -1613,10 +1637,11 @@ function render(data) {
         const stabPX = foilCX + stabDx * PPU;
         const stabPY = foilCY - stabDz * PPU; // Canvas Y is inverted Z
         
-        // Draw Stabilizer Force (Lift + Drag)
-        const stabFx = phys.L_stab_x + phys.D_stab_x;
-        const stabFz = phys.L_stab_z + phys.D_stab_z;
-        drawArrow(ctx, stabPX, stabPY, stabFx, stabFz, '#d946ef', vecScale, CONFIG.scale_L);
+        // Draw Stabilizer Lift (Purple)
+        drawArrow(ctx, stabPX, stabPY, phys.L_stab_x, phys.L_stab_z, '#d946ef', vecScale, CONFIG.scale_Stab_L);
+        
+        // Draw Stabilizer Drag (Red)
+        drawArrow(ctx, stabPX, stabPY, phys.D_stab_x, phys.D_stab_z, '#ef4444', vecScale, CONFIG.scale_Stab_D);
     }
 
     if (phys.isStalled) {
@@ -1633,7 +1658,7 @@ function render(data) {
     ctx.restore();
     
     // Graphs
-    drawSimpleGraph(ctxLift, state.liftHistory, "Vertical Lift (N)", "rgba(59, 130, 246, 0.5)", "rgba(239, 68, 68, 0.5)");
+    drawSimpleGraph(ctxLift, state.liftHistory, "Total Vertical Force (N)", "rgba(59, 130, 246, 0.5)", "rgba(239, 68, 68, 0.5)");
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
     drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(168, 85, 247, 0.5)");
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Norm (Org) vs Avg (Blu) Power (W)", "rgba(249, 115, 22, 0.5)", null, state.arithmeticAvgPowerHistory, "rgba(59, 130, 246, 0.8)");
@@ -1779,7 +1804,7 @@ function runOptimization() {
         for (let i = 0; i < steps; i++) {
             const t = i * dt;
             const phys = calculatePhysics(t);
-            sumLift += (phys.Lz + phys.Dz);
+            sumLift += phys.F_hydro_z;
             sumThrust += phys.thrust;
             sumPower += phys.power;
             count++;
@@ -1968,6 +1993,19 @@ document.getElementById('chk-assembly').addEventListener('change', (e) => VISIBI
 document.getElementById('chk-weight').addEventListener('change', (e) => VISIBILITY.weight = e.target.checked);
 document.getElementById('chk-net').addEventListener('change', (e) => VISIBILITY.net = e.target.checked);
 document.getElementById('chk-stab').addEventListener('change', (e) => VISIBILITY.stab = e.target.checked);
+document.getElementById('chk-true-scale').addEventListener('change', (e) => {
+    if (e.target.checked) {
+        // True Scale (All 0.5)
+        CONFIG.scale_L = 0.5; CONFIG.scale_D = 0.5; CONFIG.scale_T = 0.5;
+        CONFIG.scale_R = 0.5; CONFIG.scale_N = 0.5; CONFIG.scale_W = 0.5;
+        CONFIG.scale_Stab_L = 0.5; CONFIG.scale_Stab_D = 0.5;
+    } else {
+        // Visible Scale (Exaggerate Drag & Thrust)
+        CONFIG.scale_L = 0.5; CONFIG.scale_D = 5.0; CONFIG.scale_T = 1.0;
+        CONFIG.scale_R = 0.5; CONFIG.scale_N = 0.5; CONFIG.scale_W = 0.5;
+        CONFIG.scale_Stab_L = .5; CONFIG.scale_Stab_D = 10.0;
+    }
+});
 
 function togglePause() { state.paused = !state.paused; }
 
@@ -2253,7 +2291,10 @@ document.getElementById('preset-select').addEventListener('change', (e) => {
     const val = e.target.value;
     if (val) {
         const presets = getPresets();
-        if (presets[val]) applyPresetState(presets[val]);
+        if (presets[val]) {
+            applyPresetState(presets[val]);
+            document.getElementById('btn-optimize').click();
+        }
     }
 });
 
@@ -2375,7 +2416,7 @@ document.getElementById('btn-tests').addEventListener('click', () => {
             
             let sL=0, sT=0, sP=0; const steps = 12; const dt = (1.0/state.freq)/steps;
             for(let k=0; k<steps; k++) {
-                const p = calculatePhysics(k*dt); sL += p.Lz + p.Dz; sT += p.thrust; sP += p.power;
+                const p = calculatePhysics(k*dt); sL += p.F_hydro_z; sT += p.thrust; sP += p.power;
             }
             const cost = Math.abs(sL/steps - targetLift) + Math.abs(sT/steps)*3.0 + (sP/steps * 0.01);
             
