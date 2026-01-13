@@ -543,6 +543,8 @@
                     <i>C<sub>D</sub> = C<sub>D0</sub> + k C<sub>L</sub><sup>2</sup></i> &emsp; where &emsp; <i>k &approx; 1 / (&pi; AR)</i></li>
                     <li><strong>Hydrodynamic Force (Vertical Component):</strong><br>
                     <i>F<sub>hydro_z</sub> = L cos(&gamma;) - D sin(&gamma;)</i></li>
+                    <li><strong>Stall Model:</strong><br>
+                    Beyond a critical angle (~13&deg;), the lift coefficient saturates and drag increases significantly to simulate stalling.</li>
                 </ul>
 
                 <h3>2b. Mast Drag & Ventilation</h3>
@@ -612,9 +614,6 @@
 
                 <h3>1. Aerodynamic Limitations</h3>
                 <ul>
-                    <li><strong>No Stall Characteristics (Linear Lift):</strong><br>
-                    The simulation uses Thin Airfoil Theory (<i>C<sub>L</sub> = 2&pi;&alpha;</i>). It assumes lift increases forever as pitch increases. In reality, foils "stall" (lose lift abruptly) around 12–15&deg; Angle of Attack.<br>
-                    <em>Consequence: The simulation might report that a steep, slow pump is "efficient," whereas in reality, the wing would stall and the rider would crash.</em></li>
                     <li><strong>Simplified Drag Model:</strong><br>
                     Drag is calculated using a simple parabolic polar (<i>C<sub>D</sub> = C<sub>D0</sub> + k C<sub>L</sub><sup>2</sup></i>). While mast drag is included, interference drag between components is ignored.</li>
                 </ul>

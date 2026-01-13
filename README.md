@@ -35,6 +35,8 @@ Lift and Drag are calculated using **Thin Airfoil Theory**, corrected for a fini
   $$C_D = C_{D0} + k C_L^2 \quad \text{where} \quad k \approx \frac{1}{\pi AR}$$
 - **Hydrodynamic Force (Vertical Component):**
   $$F_{hydro\_z} = L \cos(\gamma) - D \sin(\gamma)$$
+- **Stall Model:**
+  Beyond a critical angle (~13°), the lift coefficient saturates and drag increases significantly to simulate stalling.
 
 ### 2b. Mast Drag & Ventilation
 To increase realism, the simulation accounts for the mast's drag and surface effects.
@@ -88,8 +90,6 @@ Power is the sum of Linear Power (legs pushing down) and Rotational Power (core/
 ## Model Limitations
 
 ### 1. Aerodynamic Limitations
-- **No Stall Characteristics (Linear Lift):** The simulation uses Thin Airfoil Theory ($C_L = 2\pi\alpha$). It assumes lift increases forever as pitch increases. In reality, foils "stall" (lose lift abruptly) around 12–15° Angle of Attack.
-  - *Consequence:* The simulation might report that a steep, slow pump is "efficient," whereas in reality, the wing would stall and the rider would crash.
 - **Simplified Drag Model:** Drag is calculated using a simple parabolic polar ($C_D = C_{D0} + k C_L^2$). While mast drag is included, interference drag between components is ignored.
 
 ### 2. Biomechanical Limitations
