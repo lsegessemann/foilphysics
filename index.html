@@ -1542,16 +1542,44 @@ function render(data) {
         ctx.beginPath(); ctx.fillStyle='#eee'; ctx.lineWidth=2; ctx.arc(shoulderX, shoulderY - headRad, headRad, 0, Math.PI*2); ctx.fill(); ctx.stroke();
         
         // Arms
-        const armDx = 0.45 * PPU;
-        const armDy = 0.15 * PPU;
-        const rArmX = shoulderX + (armDx * cosT - armDy * sinT);
-        const rArmY = shoulderY + (armDx * sinT + armDy * cosT);
-        const lArmX = shoulderX - (armDx * cosT + armDy * sinT);
-        const lArmY = shoulderY + (-armDx * sinT + armDy * cosT);
+        const armLen = 0.55 * PPU;
+        
+        // Arm swing logic: Simulate motion in Z-Y plane (Out of screen / Up-Down)
+        // 0 = Down, PI = Up. We map crouch to a range that lifts arms.
+        const armAngle = 0.2 + (crouch * 1.3); 
+        
+        // Projection:
+        // Y component (Vertical) varies with cos(angle). 
+        // X component (Lateral) is minimized to simulate "out of screen" motion rather than "side-to-side".
+        const armDyLocal = armLen * Math.cos(armAngle); 
+        const armDxLocal = armLen * 0.2 * Math.sin(armAngle); // Small lateral spread for "elbows out"
 
+        // Shoulders (Facing Screen -> Spread in World X)
+        const shoulderSpread = 0.12 * PPU; 
+        const sDx = shoulderSpread * cosT;
+        const sDy = shoulderSpread * sinT;
+
+        const rShoulderX = shoulderX + sDx; const rShoulderY = shoulderY + sDy;
+        const lShoulderX = shoulderX - sDx; const lShoulderY = shoulderY - sDy;
+
+        // Draw Shoulder Line
         ctx.lineWidth = limbWidth;
-        ctx.beginPath(); ctx.moveTo(shoulderX, shoulderY); ctx.lineTo(rArmX, rArmY); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(shoulderX, shoulderY); ctx.lineTo(lArmX, lArmY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(lShoulderX, lShoulderY); ctx.lineTo(rShoulderX, rShoulderY); ctx.stroke();
+
+        // Calculate Arm Vectors rotated by Rider Pitch (theta)
+        // Right Arm (+X spread)
+        const rDx = (armDxLocal * cosT - armDyLocal * sinT);
+        const rDy = (armDxLocal * sinT + armDyLocal * cosT);
+        
+        // Left Arm (-X spread for symmetry)
+        const lDx = (-armDxLocal * cosT - armDyLocal * sinT);
+        const lDy = (-armDxLocal * sinT + armDyLocal * cosT);
+
+        const rArmX = rShoulderX + rDx; const rArmY = rShoulderY + rDy;
+        const lArmX = lShoulderX + lDx; const lArmY = lShoulderY + lDy;
+
+        ctx.beginPath(); ctx.moveTo(lShoulderX, lShoulderY); ctx.lineTo(lArmX, lArmY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(rShoulderX, rShoulderY); ctx.lineTo(rArmX, rArmY); ctx.stroke();
     }
 
     // 3. Main Wing (NACA Profile) - Centered at (0,0)
