@@ -351,7 +351,7 @@
             <div id="visibility-controls">
                 <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift</label>
                 <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
-                <label class="legend-item"><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
+                <label class="legend-item" title="Force applied by the rider's feet on the board. Includes leg weight (visible even at 0 lift due to simulation rail)."><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
                 <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
                 <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> G-Force</label>
                 <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Board+Rider</label>
@@ -480,8 +480,12 @@
             <!-- GROUP 3: CONFIGURATION -->
             <div style="background-color: #fdf4ff; padding: 8px; border-radius: 6px; border: 1px solid #f0abfc; display: flex; flex-direction: column; gap: 8px;">
                 <div class="control-group" title="Total weight of rider plus gear. Note: Changing mass requires re-optimization to see the true power cost (otherwise you just sink).">
-                    <label>Mass: <span id="disp-mass">70</span> kg</label>
+                    <label>Rider Mass: <span id="disp-mass">70</span> kg</label>
                     <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
+                </div>
+                <div class="control-group" title="Weight of the board and foil setup. This part is always considered 'Moving Mass'.">
+                    <label>Foil Setup Mass: <span id="disp-board-mass">6.0</span> kg</label>
+                    <input type="range" id="in-board-mass" min="2.0" max="15.0" step="0.5" value="6.0">
                 </div>
                 <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
                     <label>Wing Area: <span id="disp-area">1350</span> cm²</label>
@@ -521,7 +525,7 @@
             <div style="background-color: #f4f4f5; padding: 8px; border-radius: 6px; border: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 8px;">
                 <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
                     <label>Swing Weight: <span id="disp-swing">40</span>%</label>
-                    <input type="range" id="in-swing" min="0.1" max="0.65" step="0.05" value="0.4">
+                    <input type="range" id="in-swing" min="0.0" max="1.0" step="0.05" value="0.4">
                 </div>
                 <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
                     <label>System Elasticity: <span id="disp-elastic">0</span>%</label>
@@ -616,7 +620,7 @@
                     <li><strong>Rider Force (<i>F<sub>rider</sub></i>):</strong><br>
                     The rider must push down to bridge the gap between the Water Force and the Inertial Force.<br>
                     <i>F<sub>req</sub> = F<sub>hydro_z</sub> - F<sub>inertia</sub> - m<sub>added</sub> a<sub>z</sub></i><br>
-                    <i>F<sub>rider</sub> = max(0, F<sub>req</sub>)</i><br>
+                    <i>F<sub>rider</sub> = max(0, F<sub>req</sub>)</i> (Includes static weight of upper body).<br>
                     <em>(Clamped to 0 to simulate unstrapped riding—the rider cannot pull the board up).</em></li>
                 </ul>
 
@@ -691,7 +695,8 @@
 
 // --- CONFIGURATION ---
 const CONFIG = {
-    mass: 70.0,          // Total mass (Rider + Board) in kg
+    mass: 70.0,          // Rider mass in kg
+    board_mass: 6.0,     // Mass of the board + foil + wet gear (kg)
     U: 20.0 / 3.6,       // Forward speed in m/s (converted from km/h)
     rho: 1000.0,         // Water density in kg/m³
     S: 0.135,            // Wing area in m² (e.g., 1350 cm² = 0.135 m²)
@@ -788,6 +793,7 @@ const ui = {
     dispSize: document.getElementById('disp-size'),
     dispSpeed: document.getElementById('disp-speed'),
     dispMass: document.getElementById('disp-mass'),
+    dispBoardMass: document.getElementById('disp-board-mass'),
     dispArea: document.getElementById('disp-area'),
     dispAr: document.getElementById('disp-ar'),
     dispCd0: document.getElementById('disp-cd0'),
@@ -813,7 +819,7 @@ function calculatePhysics(t) {
     // The "Moving Mass" is the Board + Active Body Parts.
     // The "Fixed Mass" is the Inertial Anchor (Head/Upper Torso).
     
-    const m_board_gear = 8.0; // Foil + Board + Wet wetusit (kg)
+    const m_board_gear = CONFIG.board_mass; // Foil + Board + Wet wetusit (kg)
     const m_legs = CONFIG.mass * CONFIG.swing_weight_ratio;
     const m_moving = m_board_gear + m_legs; 
     // m_moving is the mass we must accelerate violently (~30-35kg total)
@@ -993,16 +999,22 @@ function calculatePhysics(t) {
     let power = Math.max(0, rawLegPower * CONFIG.elastic_efficiency) + rotPower;
 
     // Weight Vector (Gravity)
-    const Wz = -CONFIG.mass * CONFIG.g;
+    const Wz = -(CONFIG.mass + CONFIG.board_mass) * CONFIG.g;
     
     // Apparent Weight (G-Force)
     // For strapless riding, we clamp this to 0. You cannot feel "negative weight" (being pulled down).
     // If the board accelerates down > 1g, you just float (0g).
     const W_apparent_z = -CONFIG.mass * Math.max(0, CONFIG.g + az);
 
+    // Force on Board (at Feet) - For Visualization
+    // This includes the muscular force from the torso PLUS the inertial weight of the legs themselves.
+    // Note: If Lift=0, F_rider_action becomes 0 (Torso unsupported), but F_inertia_legs remains (Legs supported by Rail).
+    const F_inertia_legs = m_legs * (CONFIG.g + az);
+    const F_feet_push = F_rider_action + F_inertia_legs;
+
     // --- 6. OUTPUTS ---
     const Rx = 0; 
-    const Rz = -F_rider_action; 
+    const Rz = -F_feet_push; 
 
     // Calculate Net Force (Sum of all forces)
     // Horizontal Net: Lift_x + Drag_x (Rider and Gravity are vertical)
@@ -1668,7 +1680,7 @@ function render(data) {
     if (VISIBILITY.rider) {
         // Only draw if there is significant force
         if (Math.abs(phys.Rz) > 1) {
-            drawArrow(ctx, riderForceX, riderForceY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R);
+            drawArrow(ctx, riderForceX, riderForceY, phys.Rx, phys.Rz, 'orange', vecScale, CONFIG.scale_R, 1000);
         }
     }
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
@@ -1704,12 +1716,13 @@ function render(data) {
     ctx.restore();
     
     // Graphs
-    const weight = CONFIG.mass * CONFIG.g;
+    const weight = (CONFIG.mass + CONFIG.board_mass) * CONFIG.g;
+    const riderWeight = CONFIG.mass * CONFIG.g;
 
     drawSimpleGraph(ctxLift, state.liftHistory, "Total Vertical Force (N)", "rgba(59, 130, 246, 0.5)", "rgba(239, 68, 68, 0.5)");
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
     
-    const gData = state.gForceHistory.map(v => Math.abs(v) / (weight || 1));
+    const gData = state.gForceHistory.map(v => Math.abs(v) / (riderWeight || 1));
     drawSimpleGraph(ctxGForce, gData, "Rider G-Force (G)", "rgba(255, 215, 0, 0.5)", null, null, null, 1.5);
 
     drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(168, 85, 247, 0.5)");
@@ -1762,8 +1775,8 @@ function render(data) {
         gStatusEl.style.color = '#b71c1c';
         gStatusEl.textContent = `Avg Rider G-Force: Deviation (${gRatio.toFixed(2)} G)`;
     } else {
-        gStatusEl.style.backgroundColor = '#e1bee7'; // Purple/Good
-        gStatusEl.style.color = '#4a148c';
+        gStatusEl.style.backgroundColor = '#c8e6c9'; // Green OK
+        gStatusEl.style.color = '#1b5e20';
         gStatusEl.textContent = `Avg Rider G-Force: OK (${gRatio.toFixed(2)} G)`;
     }
 }
@@ -1784,6 +1797,7 @@ document.getElementById('in-asym').addEventListener('input', (e) => { CONFIG.asy
 document.getElementById('in-size').addEventListener('input', (e) => { CONFIG.visual_size_m = parseFloat(e.target.value); ui.dispSize.textContent = CONFIG.visual_size_m.toFixed(2); });
 document.getElementById('in-speed').addEventListener('input', (e) => { const kph = parseFloat(e.target.value); CONFIG.U = kph / 3.6; ui.dispSpeed.textContent = kph.toFixed(1); });
 document.getElementById('in-mass').addEventListener('input', (e) => { CONFIG.mass = parseFloat(e.target.value); ui.dispMass.textContent = CONFIG.mass.toFixed(0); });
+document.getElementById('in-board-mass').addEventListener('input', (e) => { CONFIG.board_mass = parseFloat(e.target.value); ui.dispBoardMass.textContent = CONFIG.board_mass.toFixed(1); });
 document.getElementById('in-area').addEventListener('input', (e) => { const cm2 = parseFloat(e.target.value); CONFIG.S = cm2 / 10000; ui.dispArea.textContent = cm2.toFixed(0); });
 document.getElementById('in-ar').addEventListener('input', (e) => { CONFIG.AR = parseFloat(e.target.value); ui.dispAr.textContent = CONFIG.AR.toFixed(1); });
 document.getElementById('in-cd0').addEventListener('input', (e) => { CONFIG.Cd0 = parseFloat(e.target.value); ui.dispCd0.textContent = CONFIG.Cd0.toFixed(3); });
@@ -1821,7 +1835,8 @@ document.getElementById('btn-optimize').addEventListener('click', () => {
 });
 
 function runOptimization() {
-    const targetLift = CONFIG.mass * CONFIG.g;
+    const targetLift = (CONFIG.mass + CONFIG.board_mass) * CONFIG.g;
+    const targetRiderWeight = CONFIG.mass * CONFIG.g;
     const targetThrust = 0; 
     const liftTolerance = 5.0;
     const thrustTolerance = 2.0;
@@ -1891,7 +1906,7 @@ function runOptimization() {
 
         const liftErr = Math.abs(avgLift - targetLift);
         const thrustErr = Math.abs(avgThrust - targetThrust);
-        const gForceErr = Math.abs(avgGForce - targetLift);
+        const gForceErr = Math.abs(avgGForce - targetRiderWeight);
         
         if (isNaN(liftErr) || isNaN(thrustErr)) return { cost: Infinity };
 
@@ -2026,6 +2041,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.asymmetry_factor = 0.0; document.getElementById('in-asym').value = 0.0; ui.dispAsym.textContent = "0.00";
     CONFIG.U = 20.0 / 3.6; document.getElementById('in-speed').value = 20.0; ui.dispSpeed.textContent = "20.0";
     CONFIG.mass = 70.0; document.getElementById('in-mass').value = 70; ui.dispMass.textContent = "70";
+    CONFIG.board_mass = 6.0; document.getElementById('in-board-mass').value = 6.0; ui.dispBoardMass.textContent = "6.0";
     CONFIG.S = 0.135; document.getElementById('in-area').value = 1350; ui.dispArea.textContent = "1350";
     CONFIG.AR = 13.9; document.getElementById('in-ar').value = 13.9; ui.dispAr.textContent = "13.9";
     CONFIG.Cd0 = 0.013; document.getElementById('in-cd0').value = 0.013; ui.dispCd0.textContent = "0.013";
@@ -2160,20 +2176,20 @@ const PRESET_KEY = 'foil_sim_presets';
 const DEFAULT_PRESETS = {
     "Standard (80kg)": {
         speed: 17.0, freq: 1.13, amp: 0.18, asym: 0.08, trim: 4.6, phase: 90, height: 0.20,
-        mass: 80, area: 1400, ar: 13.9, cd0: 0.013,
+        mass: 80, boardMass: 6.0, area: 1400, ar: 13.9, cd0: 0.013,
         stabArea: 120, stabAr: 8.0, stabAngle: -1.0, fuseLen: 0.60, offset: 0.0,
         swing: 0.4, elastic: 0, size: 0.4
     },
     "Beginner (Slow/Stable)": {
         speed: 15.0, freq: 1.18, amp: 0.18, asym: 0.0, trim: 5.0, phase: 90, height: 0.3,
-        mass: 75, area: 1800, ar: 11.5, cd0: 0.018,
+        mass: 75, boardMass: 7.5, area: 1800, ar: 11.5, cd0: 0.018,
         stabArea: 250, stabAr: 6.0, stabAngle: -2.0, fuseLen: 0.70, offset: 0.05,
         swing: 0.4, elastic: 0, size: 0.4
     },
    
     "@foilien": {
         speed: 17.0, freq: 1.12, amp: 0.18, asym: 0.16, trim: 4.5, phase: 90, height: 0.20,
-        mass: 80, area: 1300, ar: 13.9, cd0: 0.013,
+        mass: 80, boardMass: 5.5, area: 1300, ar: 13.9, cd0: 0.013,
         stabArea: 120, stabAr: 8.0, stabAngle: -1.0, fuseLen: 0.60, offset: 0.0,
         swing: 0.4, elastic: 0, size: 0.4
     }
@@ -2225,6 +2241,7 @@ function captureCurrentState() {
         phase: parseFloat(document.getElementById('in-phase').value),
         height: parseFloat(document.getElementById('in-height').value),
         mass: parseFloat(document.getElementById('in-mass').value),
+        boardMass: parseFloat(document.getElementById('in-board-mass').value),
         area: parseFloat(document.getElementById('in-area').value),
         ar: parseFloat(document.getElementById('in-ar').value),
         cd0: parseFloat(document.getElementById('in-cd0').value),
@@ -2249,6 +2266,7 @@ function applyPresetState(p) {
     document.getElementById('in-phase').value = p.phase;
     document.getElementById('in-height').value = p.height;
     document.getElementById('in-mass').value = p.mass;
+    document.getElementById('in-board-mass').value = p.boardMass || 6.0;
     document.getElementById('in-area').value = p.area;
     document.getElementById('in-ar').value = p.ar;
     document.getElementById('in-cd0').value = p.cd0;
@@ -2270,6 +2288,7 @@ function applyPresetState(p) {
     CONFIG.phase_shift_deg = p.phase;
     CONFIG.ride_height = p.height;
     CONFIG.mass = p.mass;
+    CONFIG.board_mass = p.boardMass || 6.0;
     CONFIG.S = p.area / 10000;
     CONFIG.AR = p.ar;
     CONFIG.Cd0 = p.cd0;
@@ -2292,6 +2311,7 @@ function applyPresetState(p) {
     ui.dispPhase.textContent = p.phase.toFixed(0);
     ui.dispHeight.textContent = p.height.toFixed(2);
     ui.dispMass.textContent = p.mass.toFixed(0);
+    ui.dispBoardMass.textContent = (p.boardMass || 6.0).toFixed(1);
     ui.dispArea.textContent = p.area.toFixed(0);
     ui.dispAr.textContent = p.ar.toFixed(1);
     ui.dispCd0.textContent = p.cd0.toFixed(3);
@@ -2398,7 +2418,7 @@ document.getElementById('btn-tests').addEventListener('click', () => {
     // 1. HELPER FUNCTIONS
     // ==========================================
     function resetSim() {
-        CONFIG.mass = 70; CONFIG.g = 9.81; CONFIG.rho = 1000; CONFIG.S = 0.135; 
+        CONFIG.mass = 70; CONFIG.board_mass = 6.0; CONFIG.g = 9.81; CONFIG.rho = 1000; CONFIG.S = 0.135; 
         CONFIG.Cd0 = 0.013; CONFIG.AR = 13.9; CONFIG.U = 5.55; 
         
         // State Resets
@@ -2484,7 +2504,7 @@ document.getElementById('btn-tests').addEventListener('click', () => {
 
     function findBalancedState(runIndex, metric = 'avg') {
         resetSim();
-        const targetLift = CONFIG.mass * CONFIG.g;
+        const targetLift = (CONFIG.mass + CONFIG.board_mass) * CONFIG.g;
         
         state.freq = 1.0 + Math.random();
         state.heave_amp = 0.1 + Math.random()*0.1;
