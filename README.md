@@ -17,7 +17,6 @@ The rider's vertical motion (**Heave**) and the board's angle (**Pitch**) are dr
 - **Vertical Acceleration ($a_z$):** $a_z(t) = -A \omega^2 \cos(\omega t)$
 - **Pitch Angle ($\theta$):** $\theta(t) = \theta_{trim} + \theta_{amp} \cos(\omega t + \phi)$
   *(Where $\phi$ is the Phase Shift)*
-- **Physical Execution:** The rider achieves this by shifting their weight (Center of Pressure) forward or backward relative to their vertical extension. A 90° shift means pitching the nose down exactly when moving fastest downwards. A higher shift (>90°) means initiating the pitch change *early* (leading the motion).
 - **Standard Phase:** $\phi = \omega t$
 - **Asymmetric Phase:** $\phi_{asym} = \phi - \text{Asymmetry} \cos(\phi)$
 - **Vertical Position ($z$):** $z(t) = A \cos(\phi_{asym})$
@@ -98,6 +97,7 @@ Power is the sum of Linear Power (legs pushing down) and Rotational Power (core/
 - **Perfectly Rigid Transmission:** The "Two-Mass Model" assumes the board and legs move as one solid unit relative to the water forces. It ignores the flex of the mast and the fuselage, which can dampen energy transfer.
 - **Forced Kinematics (The "Rail" Effect):** The motion is defined by math ($z = A \cos(\omega t)$), not by forces. The board is essentially moving on a predefined invisible rail.
   - *Consequence:* If the rider stops pedaling (power = 0), the simulation doesn't show the board slowing down or sinking; it just shows "Rider Force = 0". The board never "crashes."
+  - *Mass Effect:* Increasing rider mass without adjusting the flight parameters (Trim/Speed) will not automatically change the trajectory. It will simply show that the rider is "Sinking" (Lift < Weight). Counter-intuitively, this might *decrease* the calculated power because the heavier legs help push the board down against the (now insufficient) lift. To see the true power cost of a heavier rider, you must re-optimize for equilibrium.
 
 ### 3. Mathematical Simplifications
 - **Quasi-Steady Assumption:** The solver calculates forces based only on the current instant's velocity and angle. It ignores "unsteady aerodynamics" (Theodorsen effects/Wagner function), where the wake from the previous stroke affects the current lift. This is usually acceptable for low frequencies but becomes inaccurate above ~2-3 Hz.
