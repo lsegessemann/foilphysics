@@ -375,6 +375,9 @@
                 <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
                 </div>
+                <div class="canvas-wrapper" id="avgGForceStatus" style="padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background-color: #f3e5f5;">
+                    Avg Rider G-Force: <span id="val-avg-gforce">0</span> G
+                </div>
                 <div class="canvas-wrapper">
                     <canvas id="graphPower" width="1300" height="260"></canvas>
                 </div>
@@ -419,7 +422,7 @@
             <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px;">
                 <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Frequency: <span id="disp-freq">1.65</span> Hz</label>
+                        <label>Frequency: <span id="disp-freq">1.65</span> Hz <span style="font-weight:normal; color:#666;">(<span id="disp-ppm">99</span> ppm)</span></label>
                         <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
                     </div>
                     <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
@@ -445,12 +448,12 @@
                     </div>
                     <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="3.3">
                 </div>
-                <div class="control-group" title="Timing difference between the heave (up/down) and pitch motions.">
+                <div class="control-group" title="Timing difference between heave and pitch. 90° is ideal (Pitch follows Velocity). Range: 80°-110°.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <label>Phase Shift: <span id="disp-phase">90</span>°</label>
                         <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-phase" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
                     </div>
-                    <input type="range" id="in-phase" min="85" max="95" step="1" value="90">
+                    <input type="range" id="in-phase" min="80" max="110" step="1" value="90">
                 </div>
                 <div class="control-group" title="Average distance from the water surface to the wing. Lower = Less Drag but Risk of Breach.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -507,7 +510,7 @@
             <div style="background-color: #f4f4f5; padding: 8px; border-radius: 6px; border: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 8px;">
                 <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
                     <label>Swing Weight: <span id="disp-swing">40</span>%</label>
-                    <input type="range" id="in-swing" min="0.1" max="0.8" step="0.05" value="0.4">
+                    <input type="range" id="in-swing" min="0.1" max="0.65" step="0.05" value="0.4">
                 </div>
                 <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
                     <label>System Elasticity: <span id="disp-elastic">0</span>%</label>
@@ -551,6 +554,7 @@
                     <li><strong>Vertical Acceleration (<i>a<sub>z</sub></i>):</strong> <i>a<sub>z</sub>(t) = -A &omega;<sup>2</sup> cos(&omega;t)</i></li>
                     <li><strong>Pitch Angle (<i>&theta;</i>):</strong> <i>&theta;(t) = &theta;<sub>trim</sub> + &theta;<sub>amp</sub> cos(&omega;t + &phi;)</i><br>
                     <em>(Where &phi; is the Phase Shift)</em></li>
+                    <li><strong>Physical Execution:</strong> The rider achieves this by shifting their weight (Center of Pressure) forward or backward relative to their vertical extension. A 90&deg; shift means pitching the nose down exactly when moving fastest downwards. A higher shift (&gt;90&deg;) means initiating the pitch change <em>early</em> (leading the motion).</li>
                     <li><strong>Standard Phase:</strong> <i>&phi; = &omega;t</i></li>
                     <li><strong>Asymmetric Phase:</strong> <i>&phi;<sub>asym</sub> = &phi; - Asymmetry cos(&phi;)</i></li>
                     <li><strong>Vertical Position (<i>z</i>):</strong> <i>z(t) = A cos(&phi;<sub>asym</sub>)</i></li>
@@ -588,7 +592,7 @@
                 <ul>
                     <li><strong>Moving Mass (<i>m<sub>moving</sub></i>):</strong><br>
                     <i>m<sub>moving</sub> = m<sub>board</sub> + (m<sub>rider</sub> &times; SwingRatio)</i><br>
-                    <em>(Default SwingRatio is 0.4, representing the active mass of the legs)</em></li>
+                    <em>(Default SwingRatio is 0.4. Can exceed 0.5 for aggressive pumping involving hips/torso)</em></li>
                     <li><strong>Inertial Requirement:</strong><br>
                     The force required to accelerate the legs and board:<br>
                     <i>F<sub>inertia</sub> = m<sub>moving</sub> (g + a<sub>z</sub>)</i></li>
@@ -694,7 +698,7 @@ const CONFIG = {
     // Adjustable Parameters
     pitch_trim_deg: 3.3,    // Base pitch angle in degrees
     phase_shift_deg: 90.0,  // Phase difference between Heave and Pitch
-    swing_weight_ratio: 0.4, // Percentage of body mass considered moving (legs)
+    swing_weight_ratio: 0.4, // Percentage of body mass considered moving (legs + arms)
     elastic_efficiency: 1.0,  // Rider elastic efficiency
     asymmetry_factor: 0.0
 };
@@ -721,7 +725,9 @@ let state = {
     avgPowerHistory: [],
     arithmeticAvgPowerHistory: [],
     linearPowerHistory: [],
-    rotationalPowerHistory: []
+    rotationalPowerHistory: [],
+    gForceHistory: [],
+    avgGForceHistory: []
 };
 
 // --- NACA PROFILE ---
@@ -758,6 +764,7 @@ const ui = {
     aoa: document.getElementById('val-aoa'),
     
     dispFreq: document.getElementById('disp-freq'),
+    dispPpm: document.getElementById('disp-ppm'),
     dispAmp: document.getElementById('disp-amp'),
     dispAsym: document.getElementById('disp-asym'),
     dispSize: document.getElementById('disp-size'),
@@ -783,9 +790,10 @@ function calculatePhysics(t) {
     const omega = 2 * Math.PI * state.freq;
     
     // --- 1. CONFIGURATION FOR 2-MASS MODEL (LEGS + BOARD) ---
-    // Standard anthropometry: Both legs are approx 33-35% of total body mass.
-    // The "Moving Mass" is the Board + The Legs.
-    // The "Fixed Mass" is the Torso/Head/Arms.
+    // Standard anthropometry: Legs (~35%) + Arms (~10%) + Hips (~15%).
+    // Aggressive pumping can involve >50% of body mass moving relative to head.
+    // The "Moving Mass" is the Board + Active Body Parts.
+    // The "Fixed Mass" is the Inertial Anchor (Head/Upper Torso).
     
     const m_board_gear = 8.0; // Foil + Board + Wet wetusit (kg)
     const m_legs = CONFIG.mass * CONFIG.swing_weight_ratio;
@@ -968,7 +976,11 @@ function calculatePhysics(t) {
 
     // Weight Vector (Gravity)
     const Wz = -CONFIG.mass * CONFIG.g;
-    const W_apparent_z = -CONFIG.mass * (CONFIG.g + az);
+    
+    // Apparent Weight (G-Force)
+    // For strapless riding, we clamp this to 0. You cannot feel "negative weight" (being pulled down).
+    // If the board accelerates down > 1g, you just float (0g).
+    const W_apparent_z = -CONFIG.mass * Math.max(0, CONFIG.g + az);
 
     // --- 6. OUTPUTS ---
     const Rx = 0; 
@@ -1345,6 +1357,10 @@ function updatePhysicsState(dtOverride) {
         state.rotationalPowerHistory.push(phys.rotPower);
         if (state.rotationalPowerHistory.length > 1000) state.rotationalPowerHistory.shift();
         
+        // Track Apparent Weight (Signed Force in Newtons) to ensure avg is exactly 1G
+        state.gForceHistory.push(phys.W_apparent_z);
+        if (state.gForceHistory.length > 1000) state.gForceHistory.shift();
+
         // Calculate window (2 cycles) for smoothing
         const cyclePeriod = 1.0 / state.freq;
         const samplesPerCycle = Math.max(1, cyclePeriod / state.dt);
@@ -1392,6 +1408,17 @@ function updatePhysicsState(dtOverride) {
         state.avgLiftHistory.push(avgLift);
         if (state.avgLiftHistory.length > 1000) state.avgLiftHistory.shift();
 
+        // Average G-Force (Windowed)
+        let gSum = 0;
+        const startG = Math.max(0, state.gForceHistory.length - windowSize);
+        const countG = state.gForceHistory.length - startG;
+        for (let i = state.gForceHistory.length - 1; i >= startG; i--) {
+            gSum += state.gForceHistory[i];
+        }
+        const avgGForce = (countG > 0) ? gSum / countG : 0;
+        state.avgGForceHistory.push(avgGForce);
+        if (state.avgGForceHistory.length > 1000) state.avgGForceHistory.shift();
+
         // Update the visual path of the foil (synced with physics steps)
         state.pathX.push(phys.x);
         state.pathZ.push(phys.z);
@@ -1406,15 +1433,16 @@ function updatePhysicsState(dtOverride) {
     const currentArithmeticAvgPower = state.arithmeticAvgPowerHistory.length > 0 ? state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length - 1] : 0;
     const currentAvgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length - 1] : 0;
     const currentAvgLift = state.avgLiftHistory.length > 0 ? state.avgLiftHistory[state.avgLiftHistory.length - 1] : 0;
+    const currentAvgGForce = state.avgGForceHistory.length > 0 ? state.avgGForceHistory[state.avgGForceHistory.length - 1] : 0;
 
     // Calculate smooth physics for rendering (interpolate time using the remainder)
     const smoothPhys = calculatePhysics(state.t + state.historyTimer);
 
-    return { phys: smoothPhys, avgPower: currentAvgPower, arithmeticAvgPower: currentArithmeticAvgPower, avgThrust: currentAvgThrust, avgLift: currentAvgLift };
+    return { phys: smoothPhys, avgPower: currentAvgPower, arithmeticAvgPower: currentArithmeticAvgPower, avgThrust: currentAvgThrust, avgLift: currentAvgLift, avgGForce: currentAvgGForce };
 }
 
 function render(data) {
-    const { phys, avgPower, arithmeticAvgPower, avgThrust, avgLift } = data;
+    const { phys, avgPower, arithmeticAvgPower, avgThrust, avgLift, avgGForce } = data;
 
     // UI
     ui.time.textContent = state.t.toFixed(2);
@@ -1700,10 +1728,25 @@ function render(data) {
         statusEl.textContent = 'Avg Thrust: On Target : ' + avgThrust.toFixed(0) + ' N';
     }
     
+    // Update Avg G-Force Status
+    const gStatusEl = document.getElementById('avgGForceStatus');
+    const targetWeight = CONFIG.mass * CONFIG.g;
+    // Calculate ratio (e.g., 1.00 G)
+    const gRatio = (targetWeight > 0) ? (Math.abs(avgGForce) / targetWeight) : 0;
+    
+    if (Math.abs(gRatio - 1.0) > 0.02) { // 2% tolerance
+        gStatusEl.style.backgroundColor = '#ffcdd2'; // Red warning
+        gStatusEl.style.color = '#b71c1c';
+        gStatusEl.textContent = `Avg Rider G-Force: Deviation (${gRatio.toFixed(2)} G)`;
+    } else {
+        gStatusEl.style.backgroundColor = '#e1bee7'; // Purple/Good
+        gStatusEl.style.color = '#4a148c';
+        gStatusEl.textContent = `Avg Rider G-Force: OK (${gRatio.toFixed(2)} G)`;
+    }
 }
 
 // --- LISTENERS ---
-document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(2); });
+document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(2); ui.dispPpm.textContent = (state.freq * 60).toFixed(0); });
 document.getElementById('in-amp').addEventListener('input', (e) => { 
     let val = parseFloat(e.target.value);
     if (val > CONFIG.ride_height - 0.02) {
@@ -1795,6 +1838,7 @@ function runOptimization() {
         let sumLift = 0;
         let sumThrust = 0;
         let sumPower = 0;
+        let sumGForce = 0;
         let count = 0;
         
         const period = 1.0 / f;
@@ -1807,15 +1851,18 @@ function runOptimization() {
             sumLift += phys.F_hydro_z;
             sumThrust += phys.thrust;
             sumPower += phys.power;
+            sumGForce += Math.abs(phys.W_apparent_z);
             count++;
         }
 
         const avgLift = sumLift / count;
         const avgThrust = sumThrust / count;
         const avgPower = sumPower / count;
+        const avgGForce = sumGForce / count;
 
         const liftErr = Math.abs(avgLift - targetLift);
         const thrustErr = Math.abs(avgThrust - targetThrust);
+        const gForceErr = Math.abs(avgGForce - targetLift);
         
         if (isNaN(liftErr) || isNaN(thrustErr)) return { cost: Infinity };
 
@@ -1824,14 +1871,16 @@ function runOptimization() {
         // This lets the optimizer minimize power freely within the valid region.
         const liftSafe = 2.0; 
         const thrustSafe = 1.0;
+        const gForceSafe = 5.0;
         
         const liftPen = Math.max(0, liftErr - liftSafe);
         const thrustPen = Math.max(0, thrustErr - thrustSafe);
+        const gForcePen = Math.max(0, gForceErr - gForceSafe);
         
         // Heavy penalty for leaving the safe zone
-        const cost = avgPower + 10000 * (liftPen + thrustPen);
+        const cost = avgPower + 10000 * (liftPen + thrustPen + gForcePen);
         
-        const isValid = (liftErr < liftTolerance && thrustErr < thrustTolerance);
+        const isValid = (liftErr < liftTolerance && thrustErr < thrustTolerance && gForceErr < (gForceSafe * 2));
         return { cost: cost, l: avgLift, t: avgThrust, p: avgPower, valid: isValid };
     }
 
@@ -1877,7 +1926,7 @@ function runOptimization() {
             if (!lockAmp) a = Math.max(0.05, Math.min(0.30, a));
             if (!lockTrim) tr = Math.max(-2.0, Math.min(10.0, tr));
             if (!lockAsym) as = Math.max(0.0, Math.min(0.8, as));
-            if (!lockPhase) ph = Math.max(85.0, Math.min(95.0, ph));
+            if (!lockPhase) ph = Math.max(80.0, Math.min(110.0, ph));
             if (!lockHeight) h = Math.max(0.10, Math.min(0.80, h));
 
             if (h < a + 0.02) {
@@ -1929,6 +1978,7 @@ function runOptimization() {
 
     // Update UI
     document.getElementById('in-freq').value = state.freq; ui.dispFreq.textContent = state.freq.toFixed(2);
+    ui.dispPpm.textContent = (state.freq * 60).toFixed(0);
     document.getElementById('in-amp').value = state.heave_amp; ui.dispAmp.textContent = state.heave_amp.toFixed(2);
     document.getElementById('in-trim').value = CONFIG.pitch_trim_deg; ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1);
     document.getElementById('in-asym').value = CONFIG.asymmetry_factor; ui.dispAsym.textContent = CONFIG.asymmetry_factor.toFixed(2);
@@ -1941,6 +1991,7 @@ function runOptimization() {
 
 document.getElementById('btn-reset').addEventListener('click', () => {
     state.freq = 1.65; document.getElementById('in-freq').value = 1.65; ui.dispFreq.textContent = "1.65";
+    ui.dispPpm.textContent = "99";
     state.heave_amp = 0.13; document.getElementById('in-amp').value = 0.13; ui.dispAmp.textContent = "0.13";
     CONFIG.asymmetry_factor = 0.0; document.getElementById('in-asym').value = 0.0; ui.dispAsym.textContent = "0.00";
     CONFIG.U = 20.0 / 3.6; document.getElementById('in-speed').value = 20.0; ui.dispSpeed.textContent = "20.0";
@@ -1964,7 +2015,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     document.getElementById('lock-height').checked = true;
     
     // Clear history for clean restart
-    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = []; state.gForceHistory = []; state.avgGForceHistory = [];
 });
 
 document.getElementById('btn-replay').addEventListener('click', () => {
@@ -1979,10 +2030,12 @@ document.getElementById('btn-replay').addEventListener('click', () => {
     state.avgLiftHistory = [];
     state.linearPowerHistory = [];
     state.rotationalPowerHistory = [];
+    state.gForceHistory = [];
+    state.avgGForceHistory = [];
     state.pathX = [];
     state.pathZ = [];
     state.paused = false;
-    render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0 });
+    render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0, avgGForce: 0 });
 });
 
 document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
@@ -2024,6 +2077,8 @@ function stepBackward() {
         state.avgLiftHistory.pop();
         state.linearPowerHistory.pop();
         state.rotationalPowerHistory.pop();
+        state.gForceHistory.pop();
+        state.avgGForceHistory.pop();
         state.pathX.pop();
         state.pathZ.pop();
 
@@ -2035,7 +2090,8 @@ function stepBackward() {
             avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
             arithmeticAvgPower: state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length-1] || 0,
             avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0,
-            avgLift: state.avgLiftHistory[state.avgLiftHistory.length-1] || 0
+            avgLift: state.avgLiftHistory[state.avgLiftHistory.length-1] || 0,
+            avgGForce: state.avgGForceHistory[state.avgGForceHistory.length-1] || 0
         });
     }
 }
@@ -2198,6 +2254,7 @@ function applyPresetState(p) {
     // Update UI Text
     ui.dispSpeed.textContent = p.speed.toFixed(1);
     ui.dispFreq.textContent = p.freq.toFixed(2);
+    ui.dispPpm.textContent = (p.freq * 60).toFixed(0);
     ui.dispAmp.textContent = p.amp.toFixed(2);
     ui.dispAsym.textContent = p.asym.toFixed(2);
     ui.dispTrim.textContent = p.trim.toFixed(1);
@@ -2470,7 +2527,7 @@ document.getElementById('btn-tests').addEventListener('click', () => {
 // Init
 renderPresetDropdown();
 
-render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0 });
+render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0, avgGForce: 0 });
 loop();
 
 </script>
