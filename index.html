@@ -335,7 +335,8 @@
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Instantaneous Power: <span id="val-watts">0</span> W<br>
                 Average Power: <span id="val-arith-avg-watts">0</span> W<br>
-                Normalized Power: <span id="val-avg-watts">0</span> W
+                Normalized Power: <span id="val-avg-watts">0</span> W<br>
+                Power/Weight: <span id="val-wkg">0.0</span> W/kg
             </div>
             <div id="slowmo-controls">
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -781,6 +782,7 @@ const ui = {
     arithAvgWatts: document.getElementById('val-arith-avg-watts'),
     avgWatts: document.getElementById('val-avg-watts'),
     avgThrust: document.getElementById('val-avg-thrust'),
+    wkg: document.getElementById('val-wkg'),
     
     // Angle Displays
     pitch: document.getElementById('val-pitch'),
@@ -1484,6 +1486,7 @@ function render(data) {
     ui.watts.textContent = phys.power.toFixed(0);
     ui.arithAvgWatts.textContent = arithmeticAvgPower.toFixed(0);
     ui.avgWatts.textContent = avgPower.toFixed(0);
+    ui.wkg.textContent = (arithmeticAvgPower / CONFIG.mass).toFixed(2);
     
     // Canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
