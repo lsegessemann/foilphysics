@@ -96,7 +96,7 @@ Power is the sum of Linear Power (legs pushing down) and Rotational Power (core/
 - **Infinite Muscle Strength:** The rider is modeled as an ideal force generator. The simulation might say "Requires 1200 Watts," but it doesn't know that a human cannot generate 1200 Watts. It does not implement Hill's Muscle Equation (the trade-off between force and speed).
 - **Perfectly Rigid Transmission:** The "Two-Mass Model" assumes the board and legs move as one solid unit relative to the water forces. It ignores the flex of the mast and the fuselage, which can dampen energy transfer.
 - **Forced Kinematics (The "Rail" Effect):** The motion is defined by math ($z = A \cos(\omega t)$), not by forces. The board is essentially moving on a predefined invisible rail.
-  - *Consequence:* If the rider stops pedaling (power = 0), the simulation doesn't show the board slowing down or sinking; it just shows "Rider Force = 0". The board never "crashes."
+  - *Consequence:* If the rider stops pumping (power = 0), the simulation doesn't show the board slowing down or sinking; it just shows "Rider Force = 0". The board never "crashes."
   - *Mass Effect:* Increasing rider mass without adjusting the flight parameters (Trim/Speed) will not automatically change the trajectory. It will simply show that the rider is "Sinking" (Lift < Weight). Counter-intuitively, this might *decrease* the calculated power because the heavier legs help push the board down against the (now insufficient) lift. To see the true power cost of a heavier rider, you must re-optimize for equilibrium.
 
 ### 3. Mathematical Simplifications

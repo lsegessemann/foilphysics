@@ -675,7 +675,7 @@
                     The "Two-Mass Model" assumes the board and legs move as one solid unit relative to the water forces. It ignores the flex of the mast and the fuselage, which can dampen energy transfer.</li>
                     <li><strong>Forced Kinematics (The "Rail" Effect):</strong><br>
                     The motion is defined by math (<i>z = A cos(&omega;t)</i>), not by forces. The board is essentially moving on a predefined invisible rail.<br>
-                    <em>Consequence: If the rider stops pedaling (power = 0), the simulation doesn't show the board slowing down or sinking; it just shows "Rider Force = 0". The board never "crashes."</em></li>
+                    <em>Consequence: If the rider stops pumping (power = 0), the simulation doesn't show the board slowing down or sinking; it just shows "Rider Force = 0". The board never "crashes."</em></li>
                     <li><strong>Mass Effect & "Free Lift":</strong><br>
                     Increasing rider mass without re-optimizing causes the simulation to show the rider "Sinking" (Lift < Weight). However, the Power calculation might not increase (or may even decrease). This is because the simulation forces the heavy legs back up during the upstroke regardless of whether there is enough Lift to do so, effectively giving the rider "free energy" for the recovery phase. To see the true cost, you must increase Lift (Speed/Trim) until the system is Balanced.</li>
                 </ul>
