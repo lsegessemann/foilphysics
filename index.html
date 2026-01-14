@@ -375,6 +375,9 @@
                 <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background-color: #e8f5e9;">
                     Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
                 </div>
+                <div class="canvas-wrapper">
+                    <canvas id="graphGForce" width="1300" height="260"></canvas>
+                </div>
                 <div class="canvas-wrapper" id="avgGForceStatus" style="padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background-color: #f3e5f5;">
                     Avg Rider G-Force: <span id="val-avg-gforce">0</span> G
                 </div>
@@ -751,6 +754,7 @@ const ctxThrust = document.getElementById('graphThrust').getContext('2d');
 const ctxPower = document.getElementById('graphPower').getContext('2d');
 const ctxAvgPower = document.getElementById('graphAvgPower').getContext('2d');
 const ctxPowerComp = document.getElementById('graphPowerComp').getContext('2d');
+const ctxGForce = document.getElementById('graphGForce').getContext('2d');
 
 const ui = {
     time: document.getElementById('val-time'),
@@ -1007,9 +1011,9 @@ function calculatePhysics(t) {
 }
  
 // --- DRAWING ---
-function drawArrow(ctx, startX, startY, u, v, color, scale, user_scale) {
+function drawArrow(ctx, startX, startY, u, v, color, scale, user_scale, maxLen = 150) {
     let len = Math.sqrt(u*u + v*v) * scale * user_scale;
-    const MAX_LEN_PX = 150;
+    const MAX_LEN_PX = maxLen;
     let clamp = 1.0;
     if (len > MAX_LEN_PX) clamp = MAX_LEN_PX / len;
     const finalU = u * scale * user_scale * clamp;
@@ -1106,11 +1110,11 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
     ctx.textBaseline = "middle";
 
     if (colorNegative) {
-        ctx.fillText(maxVal.toFixed(0), leftMargin - 6 * scale, topMargin);
+        ctx.fillText(maxVal.toFixed(1), leftMargin - 6 * scale, topMargin);
         ctx.fillText('0', leftMargin - 6 * scale, midY);
-        ctx.fillText((-maxVal).toFixed(0), leftMargin - 6 * scale, h - bottomMargin);
+        ctx.fillText((-maxVal).toFixed(1), leftMargin - 6 * scale, h - bottomMargin);
     } else {
-        ctx.fillText(maxVal.toFixed(0), leftMargin - 6 * scale, topMargin);
+        ctx.fillText(maxVal.toFixed(1), leftMargin - 6 * scale, topMargin);
         ctx.fillText('0', leftMargin - 6 * scale, h - bottomMargin);
     }
 
@@ -1654,7 +1658,7 @@ function render(data) {
         }
     }
     if (VISIBILITY.thrust) drawArrow(ctx, foilCX, foilCY, phys.thrust, 0, 'cyan', vecScale, CONFIG.scale_T);
-    if (VISIBILITY.weight) drawArrow(ctx, chestX, chestY, 0, phys.W_apparent_z, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W);
+    if (VISIBILITY.weight) drawArrow(ctx, chestX, chestY, 0, phys.W_apparent_z, 'rgb(255, 251, 0)', vecScale, CONFIG.scale_W, 1000);
     if (VISIBILITY.net) drawArrow(ctx, foilCX, foilCY, phys.NetFx, phys.NetFz, 'lime', vecScale, CONFIG.scale_N);
     
     if (VISIBILITY.stab) {
@@ -1686,14 +1690,19 @@ function render(data) {
     ctx.restore();
     
     // Graphs
+    const weight = CONFIG.mass * CONFIG.g;
+
     drawSimpleGraph(ctxLift, state.liftHistory, "Total Vertical Force (N)", "rgba(59, 130, 246, 0.5)", "rgba(239, 68, 68, 0.5)");
     drawSimpleGraph(ctxThrust, state.thrustHistory, "Net Thrust (N)", "rgba(16, 185, 129, 0.5)", "rgba(244, 63, 94, 0.5)");
+    
+    const gData = state.gForceHistory.map(v => Math.abs(v) / (weight || 1));
+    drawSimpleGraph(ctxGForce, gData, "Rider G-Force (G)", "rgba(255, 215, 0, 0.5)", null, null, null, 1.5);
+
     drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(168, 85, 247, 0.5)");
     drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Norm (Org) vs Avg (Blu) Power (W)", "rgba(249, 115, 22, 0.5)", null, state.arithmeticAvgPowerHistory, "rgba(59, 130, 246, 0.8)");
     drawSimpleGraph(ctxPowerComp, state.linearPowerHistory, "Linear (Grn) vs Rotational (Red) Power (W)", "rgba(16, 185, 129, 0.5)", null, state.rotationalPowerHistory, "rgba(239, 68, 68, 0.8)", 250);
 
     // Update avg lift status bar
-    const weight = CONFIG.mass * CONFIG.g;
     const liftStatusEl = document.getElementById('avgLiftStatus');
     const liftDiff = avgLift - weight;
     
