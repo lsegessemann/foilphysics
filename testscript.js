@@ -45,13 +45,34 @@
         height: parseFloat(document.getElementById('in-height').value)
     };
 
+    // --- 1.6 CAPTURE LIMITS FROM UI ---
+    const limits = {
+        freq: { min: parseFloat(document.getElementById('min-freq').value), max: parseFloat(document.getElementById('max-freq').value) },
+        amp: { min: parseFloat(document.getElementById('min-amp').value), max: parseFloat(document.getElementById('max-amp').value) },
+        trim: { min: parseFloat(document.getElementById('min-trim').value), max: parseFloat(document.getElementById('max-trim').value) },
+        asym: { min: parseFloat(document.getElementById('min-asym').value), max: parseFloat(document.getElementById('max-asym').value) },
+        phase: { min: parseFloat(document.getElementById('min-phase').value), max: parseFloat(document.getElementById('max-phase').value) },
+        height: { min: parseFloat(document.getElementById('min-height').value), max: parseFloat(document.getElementById('max-height').value) }
+    };
+
+    console.log("%c--- OPTIMIZATION LIMITS ---", "color: #d97706; font-weight: bold;");
+    const formattedLimits = {};
+    for (const [k, v] of Object.entries(limits)) {
+        if (locks[k]) {
+            formattedLimits[k] = `🔒 LOCKED (${lockedVals[k]})`;
+        } else {
+            formattedLimits[k] = `${v.min} - ${v.max}`;
+        }
+    }
+    console.table(formattedLimits);
+
     // --- 1.7 CAPTURE OPTIMIZATION METRIC ---
     const optMetric = document.getElementById('opt-metric') ? document.getElementById('opt-metric').value : 'avg';
     console.log(`%c   🎯 Optimizing for: ${optMetric === 'norm' ? 'NORMALIZED POWER' : 'AVERAGE POWER'}`, "color: #d97706; font-weight: bold;");
 
     // --- 2. DEFINE TEST CASES ---
     const combinations = [];
-    const mass = 70;
+    const masses = [70, 80, 90];
     const areas = [1300, 2000];
     
     // Generate speeds from 12.0 to 20.0 in 0.5 steps
@@ -60,9 +81,11 @@
         speeds.push(parseFloat(s.toFixed(1))); 
     }
 
-    areas.forEach(area => {
-        speeds.forEach(speed => {
-            combinations.push({ mass, area, speed });
+    masses.forEach(mass => {
+        areas.forEach(area => {
+            speeds.forEach(speed => {
+                combinations.push({ mass, area, speed });
+            });
         });
     });
 
@@ -76,15 +99,7 @@
         const targetLift = (CONFIG.mass + CONFIG.board_mass) * CONFIG.g;
         const targetRiderWeight = CONFIG.mass * CONFIG.g;
         
-        // 2. Define Search Limits
-        const limits = {
-            freq: {min: 0.5, max: 2.5},
-            amp: {min: 0.05, max: 0.30},
-            trim: {min: -2.0, max: 10.0},
-            asym: {min: 0.0, max: 0.8},
-            phase: {min: 80, max: 110},
-            height: {min: 0.10, max: 0.80}
-        };
+        // 2. Limits are now used from the global 'limits' object captured above
 
         let bestCost = Infinity;
         let bestPower = Infinity;
@@ -218,7 +233,7 @@
     
     combinations.forEach((c, idx) => {
         const progress = `[${idx + 1}/${combinations.length}]`;
-        console.log(`${progress} Optimizing: 70kg | ${c.area}cm² | ${c.speed}km/h ...`);
+        console.log(`${progress} Optimizing: ${c.mass}kg | ${c.area}cm² | ${c.speed}km/h ...`);
         
         const result = findOptimalSettings(c.mass, c.area, c.speed);
         
@@ -281,30 +296,33 @@
     }
 
     function drawConsoleGraph(title, valueKey) {
-        console.log(`\n%c--- ${title} ---`, "color: #2563eb; font-weight: bold; font-size: 14px;");
-        
+        const masses = [...new Set(results.map(r => r["Mass (kg)"]))].sort((a,b) => a-b);
         const areasGraph = [...new Set(results.map(r => r["Wing Area (cm²)"]))].sort((a,b) => a-b);
         const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']; 
         
-        // Global Bounds
-        const allPoints = results.map(r => ({
-            x: parseFloat(r["Speed (km/h)"]),
-            y: parseFloat(r[valueKey])
-        }));
-        
-        if (allPoints.length > 1) {
-            const minX = Math.min(...allPoints.map(p => p.x));
-            const maxX = Math.max(...allPoints.map(p => p.x));
-            const minY = Math.min(...allPoints.map(p => p.y));
-            const maxY = Math.max(...allPoints.map(p => p.y));
+        masses.forEach(mass => {
+            console.log(`\n%c--- ${title} (${mass} kg) ---`, "color: #2563eb; font-weight: bold; font-size: 14px;");
+            
+            const massResults = results.filter(r => r["Mass (kg)"] == mass);
+            
+            const points = massResults.map(r => ({
+                x: parseFloat(r["Speed (km/h)"]),
+                y: parseFloat(r[valueKey])
+            }));
+            
+            if (points.length <= 1) return;
+
+            const minX = Math.min(...points.map(p => p.x));
+            const maxX = Math.max(...points.map(p => p.x));
+            const minY = Math.min(...points.map(p => p.y));
+            const maxY = Math.max(...points.map(p => p.y));
 
             const W = 60;
             const H = 15;
             const grid = Array(H).fill().map(() => Array(W).fill(null));
             
-            // Plot
             areasGraph.forEach((area, idx) => {
-                const pts = results
+                const pts = massResults
                     .filter(r => r["Wing Area (cm²)"] == area)
                     .map(r => ({
                         x: parseFloat(r["Speed (km/h)"]),
@@ -312,7 +330,6 @@
                         valid: r["Valid"]
                     }));
                 
-                // 2. Plot Actual Points (Bold)
                 pts.forEach(p => {
                     const nx = (p.x - minX) / (maxX - minX || 1);
                     const ny = (p.y - minY) / (maxY - minY || 1);
@@ -323,14 +340,12 @@
                 });
             });
 
-            // Legend
             console.log("%cLegend:", "font-weight:bold; color:#444");
             areasGraph.forEach((area, i) => {
                 console.log(`%c● ${area} cm²`, `color: ${colors[i % colors.length]}; font-weight:bold`);
             });
             console.log(""); 
 
-            // Draw
             for (let r = 0; r < H; r++) {
                 const yVal = maxY - (r / (H - 1)) * (maxY - minY);
                 let rowStr = `%c${yVal.toFixed(0).padStart(4)} ┤`;
@@ -353,7 +368,8 @@
                         } else {
                             const idx1 = unique[0];
                             const idx2 = unique[1];
-                            char = "▐";
+                            const anyInvalid = points.some(x => !x.valid);
+                            char = anyInvalid ? "X" : "▐";
                             style = `color: ${colors[idx2 % colors.length]}; background: ${colors[idx1 % colors.length]}; font-weight:bold`;
                         }
                     }
@@ -370,7 +386,6 @@
             
             console.log(`%c     └${'─'.repeat(W)}`, "color:#64748b");
             
-            // Custom Axis Labels
             let axisArr = Array(W).fill(' ');
             [12, 14, 16, 18, 20].forEach(val => {
                 if (val >= minX && val <= maxX) {
@@ -380,7 +395,7 @@
                 }
             });
             console.log(`%c      ${axisArr.join('')} km/h`, "color:#64748b; font-weight:bold");
-        }
+        });
     }
 
     drawConsoleGraph("AVG POWER CURVES", "Optimal Avg Power (W)");
