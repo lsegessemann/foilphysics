@@ -99,8 +99,9 @@
             height: 4px;
             -webkit-appearance: none;
             width: 100%;
-            background: transparent;
+            background: #e2e8f0;
             margin: 6px 0;
+            border-radius: 3px;
         }
         input[type=range]:focus {
             outline: none;
@@ -109,7 +110,7 @@
             width: 100%;
             height: 6px;
             cursor: pointer;
-            background: #e2e8f0;
+            background: transparent;
             border-radius: 3px;
         }
         input[type=range]::-webkit-slider-thumb {
@@ -312,6 +313,42 @@
         .readme-content li { margin-bottom: 4px; }
         .readme-content a { color: #3b82f6; text-decoration: none; }
         .readme-content a:hover { text-decoration: underline; }
+
+        /* Slider Handles */
+        .slider-wrapper {
+            position: relative;
+            width: 100%;
+            height: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .slider-wrapper input[type=range] {
+            margin: 0;
+            z-index: 1;
+        }
+        .limit-handle {
+            position: absolute;
+            top: 0; bottom: 0;
+            width: 20px; /* Large hit area */
+            cursor: ew-resize;
+            z-index: 10;
+            transform: translateX(-50%);
+            touch-action: none;
+        }
+        .limit-handle::after {
+            content: '';
+            position: absolute;
+            left: 8px; /* Center of 20px is 10px. 4px width -> start at 8px */
+            top: 2px; bottom: 2px;
+            width: 4px;
+            background-color: #ef4444;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .limit-handle:hover::after {
+            background-color: #dc2626;
+            box-shadow: 0 0 4px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
@@ -334,8 +371,8 @@
                 </span>: <span id="val-aoa">0.0</span>°<br>
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
                 Instantaneous Power: <span id="val-watts">0</span> W<br>
-                Average Power: <span id="val-arith-avg-watts">0</span> W<br>
-                Normalized Power: <span id="val-avg-watts">0</span> W<br>
+                Average Power: <span id="val-avg-watts">0</span> W<br>
+                Normalized Power: <span id="val-norm-watts">0</span> W<br>
                 Power/Weight: <span id="val-wkg">0.0</span> W/kg
             </div>
             <div id="slowmo-controls">
@@ -427,44 +464,110 @@
                 <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <label>Frequency: <span id="disp-freq">1.65</span> Hz <span style="font-weight:normal; color:#666;">(<span id="disp-ppm">99</span> ppm)</span></label>
-                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="range-toggle" data-target="range-freq" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
+                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        </div>
                     </div>
-                    <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
+                        <div class="limit-handle min-handle" data-for="in-freq" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-freq" data-type="max"></div>
+                    </div>
+                    <div id="range-freq" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-freq" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-freq" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                    </div>
                 </div>
                 <div class="control-group" title="Vertical range of motion for the foil path.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
-                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-amp" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="range-toggle" data-target="range-amp" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
+                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-amp" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        </div>
                     </div>
-                    <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
+                        <div class="limit-handle min-handle" data-for="in-amp" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-amp" data-type="max"></div>
+                    </div>
+                    <div id="range-amp" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-amp" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-amp" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                    </div>
                 </div>
                 <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <label>Asymmetry: <span id="disp-asym">0.00</span></label>
-                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-asym" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="range-toggle" data-target="range-asym" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
+                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-asym" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        </div>
                     </div>
-                    <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
+                        <div class="limit-handle min-handle" data-for="in-asym" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-asym" data-type="max"></div>
+                    </div>
+                    <div id="range-asym" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-asym" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-asym" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                    </div>
                 </div>
                 <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <label>Front Wing Pitch: <span id="disp-trim">3.3</span>°</label>
-                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-trim" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="range-toggle" data-target="range-trim" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
+                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-trim" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
+                        </div>
                     </div>
-                    <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="3.3">
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="3.3">
+                        <div class="limit-handle min-handle" data-for="in-trim" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-trim" data-type="max"></div>
+                    </div>
+                    <div id="range-trim" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-trim" step="0.1" style="width:50px; font-size:10px; padding:1px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-trim" step="0.1" style="width:50px; font-size:10px; padding:1px;">
+                    </div>
                 </div>
                 <div class="control-group" title="Timing difference between heave and pitch. 90° is ideal (Pitch follows Velocity). Range: 80°-110°.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <label>Phase Shift: <span id="disp-phase">90</span>°</label>
-                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-phase" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="range-toggle" data-target="range-phase" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
+                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-phase" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
+                        </div>
                     </div>
-                    <input type="range" id="in-phase" min="80" max="110" step="1" value="90">
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-phase" min="80" max="110" step="1" value="90">
+                        <div class="limit-handle min-handle" data-for="in-phase" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-phase" data-type="max"></div>
+                    </div>
+                    <div id="range-phase" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-phase" step="1" style="width:50px; font-size:10px; padding:1px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-phase" step="1" style="width:50px; font-size:10px; padding:1px;">
+                    </div>
                 </div>
                 <div class="control-group" title="Average distance from the water surface to the wing. Lower = Less Drag but Risk of Breach.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <label>Ride Height: <span id="disp-height">0.20</span> m</label>
-                        <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-height" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="range-toggle" data-target="range-height" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
+                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-height" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
+                        </div>
                     </div>
-                    <input type="range" id="in-height" min="0.10" max="0.80" step="0.01" value="0.20">
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-height" min="0.10" max="0.80" step="0.01" value="0.20">
+                        <div class="limit-handle min-handle" data-for="in-height" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-height" data-type="max"></div>
+                    </div>
+                    <div id="range-height" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-height" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-height" step="0.01" style="width:50px; font-size:10px; padding:1px;">
+                    </div>
                 </div>
             </div>
 
@@ -476,7 +579,13 @@
                 </select>
             </div>
 
-            <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
+            <div class="tooltip" style="width: 100%; border-bottom: none;">
+                <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
+                <span class="tooltip-text" style="width: 200px; text-align: center;">These might not be the overall best values wrt power (might be a local minimum)</span>
+            </div>
+            <div style="text-align: center; margin-top: 4px;">
+                <button id="btn-reset-limits" style="background:none; border:none; cursor: pointer; font-size: 9px; color: #94a3b8; font-weight: bold;">↺ RESET RANGES</button>
+            </div>
 
             <!-- GROUP 3: CONFIGURATION -->
             <div style="background-color: #fdf4ff; padding: 8px; border-radius: 6px; border: 1px solid #f0abfc; display: flex; flex-direction: column; gap: 8px;">
@@ -745,8 +854,8 @@ let state = {
     avgThrustHistory: [],
     avgLiftHistory: [],
     powerHistory: [],
+    normPowerHistory: [],
     avgPowerHistory: [],
-    arithmeticAvgPowerHistory: [],
     linearPowerHistory: [],
     rotationalPowerHistory: [],
     gForceHistory: [],
@@ -779,8 +888,8 @@ const ctxGForce = document.getElementById('graphGForce').getContext('2d');
 const ui = {
     time: document.getElementById('val-time'),
     watts: document.getElementById('val-watts'),
-    arithAvgWatts: document.getElementById('val-arith-avg-watts'),
     avgWatts: document.getElementById('val-avg-watts'),
+    normWatts: document.getElementById('val-norm-watts'),
     avgThrust: document.getElementById('val-avg-thrust'),
     wkg: document.getElementById('val-wkg'),
     
@@ -1410,13 +1519,13 @@ function updatePhysicsState(dtOverride) {
             sumFourthPower += Math.pow(val, 4);
             sumPower += val;
         }
-        const avgPower = (count > 0) ? Math.pow(sumFourthPower / count, 0.25) : 0;
-        const arithmeticAvgPower = (count > 0) ? sumPower / count : 0;
+        const normPower = (count > 0) ? Math.pow(sumFourthPower / count, 0.25) : 0;
+        const avgPower = (count > 0) ? sumPower / count : 0;
 
+        state.normPowerHistory.push(normPower);
+        if (state.normPowerHistory.length > 1000) state.normPowerHistory.shift();
         state.avgPowerHistory.push(avgPower);
         if (state.avgPowerHistory.length > 1000) state.avgPowerHistory.shift();
-        state.arithmeticAvgPowerHistory.push(arithmeticAvgPower);
-        if (state.arithmeticAvgPowerHistory.length > 1000) state.arithmeticAvgPowerHistory.shift();
 
         // Average Thrust (Windowed)
         let thrustSum = 0;
@@ -1461,8 +1570,8 @@ function updatePhysicsState(dtOverride) {
     }
     
     // Get the most recent averages for the UI display
+    const currentNormPower = state.normPowerHistory.length > 0 ? state.normPowerHistory[state.normPowerHistory.length - 1] : 0;
     const currentAvgPower = state.avgPowerHistory.length > 0 ? state.avgPowerHistory[state.avgPowerHistory.length - 1] : 0;
-    const currentArithmeticAvgPower = state.arithmeticAvgPowerHistory.length > 0 ? state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length - 1] : 0;
     const currentAvgThrust = state.avgThrustHistory.length > 0 ? state.avgThrustHistory[state.avgThrustHistory.length - 1] : 0;
     const currentAvgLift = state.avgLiftHistory.length > 0 ? state.avgLiftHistory[state.avgLiftHistory.length - 1] : 0;
     const currentAvgGForce = state.avgGForceHistory.length > 0 ? state.avgGForceHistory[state.avgGForceHistory.length - 1] : 0;
@@ -1470,11 +1579,11 @@ function updatePhysicsState(dtOverride) {
     // Calculate smooth physics for rendering (interpolate time using the remainder)
     const smoothPhys = calculatePhysics(state.t + state.historyTimer);
 
-    return { phys: smoothPhys, avgPower: currentAvgPower, arithmeticAvgPower: currentArithmeticAvgPower, avgThrust: currentAvgThrust, avgLift: currentAvgLift, avgGForce: currentAvgGForce };
+    return { phys: smoothPhys, normPower: currentNormPower, avgPower: currentAvgPower, avgThrust: currentAvgThrust, avgLift: currentAvgLift, avgGForce: currentAvgGForce };
 }
 
 function render(data) {
-    const { phys, avgPower, arithmeticAvgPower, avgThrust, avgLift, avgGForce } = data;
+    const { phys, normPower, avgPower, avgThrust, avgLift, avgGForce } = data;
 
     // UI
     ui.time.textContent = state.t.toFixed(2);
@@ -1484,9 +1593,9 @@ function render(data) {
     ui.aoa.textContent = (phys.alpha * 180 / Math.PI).toFixed(1);
 
     ui.watts.textContent = phys.power.toFixed(0);
-    ui.arithAvgWatts.textContent = arithmeticAvgPower.toFixed(0);
     ui.avgWatts.textContent = avgPower.toFixed(0);
-    ui.wkg.textContent = (arithmeticAvgPower / CONFIG.mass).toFixed(2);
+    ui.normWatts.textContent = normPower.toFixed(0);
+    ui.wkg.textContent = (avgPower / CONFIG.mass).toFixed(2);
     
     // Canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1729,7 +1838,7 @@ function render(data) {
     drawSimpleGraph(ctxGForce, gData, "Rider G-Force (G)", "rgba(255, 215, 0, 0.5)", null, null, null, 1.5);
 
     drawSimpleGraph(ctxPower, state.powerHistory, "Rider Inst. Power (W)", "rgba(245, 158, 11, 0.5)", "rgba(168, 85, 247, 0.5)");
-    drawSimpleGraph(ctxAvgPower, state.avgPowerHistory, "Norm (Org) vs Avg (Blu) Power (W)", "rgba(249, 115, 22, 0.5)", null, state.arithmeticAvgPowerHistory, "rgba(59, 130, 246, 0.8)");
+    drawSimpleGraph(ctxAvgPower, state.normPowerHistory, "Norm (Org) vs Avg (Blu) Power (W)", "rgba(249, 115, 22, 0.5)", null, state.avgPowerHistory, "rgba(59, 130, 246, 0.8)");
     drawSimpleGraph(ctxPowerComp, state.linearPowerHistory, "Linear (Grn) vs Rotational (Red) Power (W)", "rgba(16, 185, 129, 0.5)", null, state.rotationalPowerHistory, "rgba(239, 68, 68, 0.8)", 250);
 
     // Update avg lift status bar
@@ -1870,6 +1979,14 @@ function runOptimization() {
     let bestHeight = originalHeight;
     let bestCost = Infinity;
 
+    // Helper to get dynamic ranges from sliders
+    const getLims = (id) => { 
+        const suffix = id.replace('in-', '');
+        const min = parseFloat(document.getElementById('min-' + suffix).value);
+        const max = parseFloat(document.getElementById('max-' + suffix).value);
+        return { min, max, span: max - min }; 
+    };
+
     // Helper
     function evaluate(f, a, tr, as, ph, h) {
         state.freq = f;
@@ -1940,6 +2057,13 @@ function runOptimization() {
     const iterations = 1500;
 
     for (let attempt = 0; attempt < attempts; attempt++) {
+        const limFreq = getLims('in-freq');
+        const limAmp = getLims('in-amp');
+        const limTrim = getLims('in-trim');
+        const limAsym = getLims('in-asym');
+        const limPhase = getLims('in-phase');
+        const limHeight = getLims('in-height');
+
         let currentBestFreq = originalFreq;
         let currentBestAmp = originalAmp;
         let currentBestTrim = originalTrim;
@@ -1951,31 +2075,31 @@ function runOptimization() {
         // Randomize start point for subsequent attempts to explore broader space
         if (attempt > 0) {
             const startScale = 0.5;
-            if (!lockFreq) currentBestFreq += (Math.random() - 0.5) * 1.0 * startScale;
-            if (!lockAmp) currentBestAmp += (Math.random() - 0.5) * 0.1 * startScale;
-            if (!lockTrim) currentBestTrim += (Math.random() - 0.5) * 5.0 * startScale;
-            if (!lockAsym) currentBestAsym += (Math.random() - 0.5) * 0.5 * startScale;
-            if (!lockPhase) currentBestPhase += (Math.random() - 0.5) * 10.0 * startScale;
-            if (!lockHeight) currentBestHeight += (Math.random() - 0.5) * 0.2 * startScale;
+            if (!lockFreq) currentBestFreq += (Math.random() - 0.5) * limFreq.span * startScale;
+            if (!lockAmp) currentBestAmp += (Math.random() - 0.5) * limAmp.span * startScale;
+            if (!lockTrim) currentBestTrim += (Math.random() - 0.5) * limTrim.span * startScale;
+            if (!lockAsym) currentBestAsym += (Math.random() - 0.5) * limAsym.span * startScale;
+            if (!lockPhase) currentBestPhase += (Math.random() - 0.5) * limPhase.span * startScale;
+            if (!lockHeight) currentBestHeight += (Math.random() - 0.5) * limHeight.span * startScale;
         }
 
         for (let i = 0; i < iterations; i++) {
             const learningRate = 1.0; 
             const scale = learningRate * Math.max(0.1, (1 - i/iterations));
 
-            let f = currentBestFreq + (lockFreq ? 0 : (Math.random() - 0.5) * 1.0 * scale);
-            let a = currentBestAmp + (lockAmp ? 0 : (Math.random() - 0.5) * 0.1 * scale);
-            let tr = currentBestTrim + (lockTrim ? 0 : (Math.random() - 0.5) * 5.0 * scale);
-            let as = currentBestAsym + (lockAsym ? 0 : (Math.random() - 0.5) * 0.5 * scale);
-            let ph = currentBestPhase + (lockPhase ? 0 : (Math.random() - 0.5) * 10.0 * scale);
-            let h = currentBestHeight + (lockHeight ? 0 : (Math.random() - 0.5) * 0.2 * scale);
+            let f = currentBestFreq + (lockFreq ? 0 : (Math.random() - 0.5) * limFreq.span * 0.5 * scale);
+            let a = currentBestAmp + (lockAmp ? 0 : (Math.random() - 0.5) * limAmp.span * 0.5 * scale);
+            let tr = currentBestTrim + (lockTrim ? 0 : (Math.random() - 0.5) * limTrim.span * 0.5 * scale);
+            let as = currentBestAsym + (lockAsym ? 0 : (Math.random() - 0.5) * limAsym.span * 0.5 * scale);
+            let ph = currentBestPhase + (lockPhase ? 0 : (Math.random() - 0.5) * limPhase.span * 0.5 * scale);
+            let h = currentBestHeight + (lockHeight ? 0 : (Math.random() - 0.5) * limHeight.span * 0.5 * scale);
 
-            if (!lockFreq) f = Math.max(0.5, Math.min(2.5, f));
-            if (!lockAmp) a = Math.max(0.05, Math.min(0.30, a));
-            if (!lockTrim) tr = Math.max(-2.0, Math.min(10.0, tr));
-            if (!lockAsym) as = Math.max(0.0, Math.min(0.8, as));
-            if (!lockPhase) ph = Math.max(80.0, Math.min(110.0, ph));
-            if (!lockHeight) h = Math.max(0.10, Math.min(0.80, h));
+            if (!lockFreq) f = Math.max(limFreq.min, Math.min(limFreq.max, f));
+            if (!lockAmp) a = Math.max(limAmp.min, Math.min(limAmp.max, a));
+            if (!lockTrim) tr = Math.max(limTrim.min, Math.min(limTrim.max, tr));
+            if (!lockAsym) as = Math.max(limAsym.min, Math.min(limAsym.max, as));
+            if (!lockPhase) ph = Math.max(limPhase.min, Math.min(limPhase.max, ph));
+            if (!lockHeight) h = Math.max(limHeight.min, Math.min(limHeight.max, h));
 
             if (h < a + 0.02) {
                 if (!lockHeight) h = Math.min(0.80, a + 0.02);
@@ -2034,7 +2158,7 @@ function runOptimization() {
     document.getElementById('in-height').value = CONFIG.ride_height; ui.dispHeight.textContent = CONFIG.ride_height.toFixed(2);
     
     // Clear history
-    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.normPowerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = []; state.gForceHistory = []; state.avgGForceHistory = [];
 }
 
 document.getElementById('btn-reset').addEventListener('click', () => {
@@ -2065,7 +2189,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     document.getElementById('lock-height').checked = true;
     
     // Clear history for clean restart
-    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = []; state.gForceHistory = []; state.avgGForceHistory = [];
+    state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.normPowerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = []; state.gForceHistory = []; state.avgGForceHistory = [];
 });
 
 document.getElementById('btn-replay').addEventListener('click', () => {
@@ -2074,8 +2198,8 @@ document.getElementById('btn-replay').addEventListener('click', () => {
     state.liftHistory = [];
     state.thrustHistory = [];
     state.powerHistory = [];
+    state.normPowerHistory = [];
     state.avgPowerHistory = [];
-    state.arithmeticAvgPowerHistory = [];
     state.avgThrustHistory = [];
     state.avgLiftHistory = [];
     state.linearPowerHistory = [];
@@ -2085,7 +2209,7 @@ document.getElementById('btn-replay').addEventListener('click', () => {
     state.pathX = [];
     state.pathZ = [];
     state.paused = false;
-    render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0, avgGForce: 0 });
+    render({ phys: calculatePhysics(0), normPower: 0, avgPower: 0, avgThrust: 0, avgLift: 0, avgGForce: 0 });
 });
 
 document.getElementById('chk-lift').addEventListener('change', (e) => VISIBILITY.lift = e.target.checked);
@@ -2121,8 +2245,8 @@ function stepBackward() {
         state.liftHistory.pop();
         state.thrustHistory.pop();
         state.powerHistory.pop();
+        state.normPowerHistory.pop();
         state.avgPowerHistory.pop();
-        state.arithmeticAvgPowerHistory.pop();
         state.avgThrustHistory.pop();
         state.avgLiftHistory.pop();
         state.linearPowerHistory.pop();
@@ -2137,8 +2261,8 @@ function stepBackward() {
 
         render({ 
             phys: calculatePhysics(state.t), 
+            normPower: state.normPowerHistory[state.normPowerHistory.length-1] || 0, 
             avgPower: state.avgPowerHistory[state.avgPowerHistory.length-1] || 0, 
-            arithmeticAvgPower: state.arithmeticAvgPowerHistory[state.arithmeticAvgPowerHistory.length-1] || 0,
             avgThrust: state.avgThrustHistory[state.avgThrustHistory.length-1] || 0,
             avgLift: state.avgLiftHistory[state.avgLiftHistory.length-1] || 0,
             avgGForce: state.avgGForceHistory[state.avgGForceHistory.length-1] || 0
@@ -2329,7 +2453,7 @@ function applyPresetState(p) {
     
     // Reset History to avoid graph jumps
     state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; 
-    state.avgPowerHistory = []; state.arithmeticAvgPowerHistory = []; 
+    state.normPowerHistory = []; state.avgPowerHistory = []; 
     state.avgThrustHistory = []; state.avgLiftHistory = [];
 }
 
@@ -2651,8 +2775,145 @@ document.getElementById('btn-tests').addEventListener('click', () => {
 // Init
 renderPresetDropdown();
 
-render({ phys: calculatePhysics(0), avgPower: 0, arithmeticAvgPower: 0, avgThrust: 0, avgLift: 0, avgGForce: 0 });
+render({ phys: calculatePhysics(0), normPower: 0, avgPower: 0, avgThrust: 0, avgLift: 0, avgGForce: 0 });
 loop();
+
+// --- RANGE CONTROLS SETUP ---
+document.querySelectorAll('.range-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const t = document.getElementById(btn.dataset.target);
+        t.style.display = t.style.display === 'none' ? 'flex' : 'none';
+    });
+});
+
+const RANGE_DEFAULTS = {
+    'in-freq': {min: 0.01, max: 2.5},
+    'in-amp': {min: 0.00, max: 0.30},
+    'in-asym': {min: 0.0, max: 0.8},
+    'in-trim': {min: -2.0, max: 10.0},
+    'in-phase': {min: 80, max: 110},
+    'in-height': {min: 0.10, max: 0.80}
+};
+
+const updateRangeVisual = (id) => {
+    const s = document.getElementById(id);
+    const def = RANGE_DEFAULTS[id];
+    if (!def) return;
+    
+    const suffix = id.replace('in-', '');
+    const currentMin = parseFloat(document.getElementById('min-' + suffix).value);
+    const currentMax = parseFloat(document.getElementById('max-' + suffix).value);
+    
+    const range = def.max - def.min;
+    
+    const leftPct = ((currentMin - def.min) / range) * 100;
+    const rightPct = ((currentMax - def.min) / range) * 100;
+    
+    // Update Handles
+    const wrapper = s.closest('.slider-wrapper');
+    if (wrapper) {
+        const minH = wrapper.querySelector('.min-handle');
+        const maxH = wrapper.querySelector('.max-handle');
+        if (minH) minH.style.left = leftPct + '%';
+        if (maxH) maxH.style.left = rightPct + '%';
+    }
+
+    // Gradient: Track -> Active Zone -> Track (Handles are now DOM elements)
+    const grad = `linear-gradient(to right, 
+        #e2e8f0 0%, #e2e8f0 ${leftPct}%, 
+        #dbeafe ${leftPct}%, #dbeafe ${rightPct}%, 
+        #e2e8f0 ${rightPct}%, #e2e8f0 100%)`;
+        
+    s.style.background = grad;
+};
+
+const setupHandleDrag = (handle) => {
+    const id = handle.dataset.for;
+    const type = handle.dataset.type;
+    const slider = document.getElementById(id);
+    const def = RANGE_DEFAULTS[id];
+    const suffix = id.replace('in-', '');
+    const minInput = document.getElementById('min-' + suffix);
+    const maxInput = document.getElementById('max-' + suffix);
+
+    const onMove = (e) => {
+        const wrapper = slider.closest('.slider-wrapper');
+        const rect = wrapper.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        
+        let pct = (clientX - rect.left) / rect.width;
+        pct = Math.max(0, Math.min(1, pct));
+        
+        const range = def.max - def.min;
+        let val = def.min + pct * range;
+        
+        // Snap to step
+        const step = parseFloat(slider.step) || 0.01;
+        val = Math.round(val / step) * step;
+        
+        // Constraints
+        if (type === 'min') {
+            const currentMax = parseFloat(maxInput.value);
+            val = Math.min(val, currentMax);
+            minInput.value = val.toFixed(step < 0.1 ? 2 : 1);
+        } else {
+            const currentMin = parseFloat(minInput.value);
+            val = Math.max(val, currentMin);
+            maxInput.value = val.toFixed(step < 0.1 ? 2 : 1);
+        }
+        
+        updateRangeVisual(id);
+    };
+
+    const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onUp);
+    };
+
+    handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+    });
+    
+    handle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        window.addEventListener('touchmove', onMove);
+        window.addEventListener('touchend', onUp);
+    });
+};
+
+const bindRange = (id, minId, maxId) => {
+    const s = document.getElementById(id), min = document.getElementById(minId), max = document.getElementById(maxId);
+    min.value = s.min; max.value = s.max;
+    const update = () => { updateRangeVisual(id); };
+    min.addEventListener('change', update);
+    max.addEventListener('change', update);
+    
+    // Initialize handles
+    const wrapper = s.closest('.slider-wrapper');
+    if (wrapper) wrapper.querySelectorAll('.limit-handle').forEach(setupHandleDrag);
+    
+    updateRangeVisual(id);
+};
+bindRange('in-freq', 'min-freq', 'max-freq');
+bindRange('in-amp', 'min-amp', 'max-amp');
+bindRange('in-asym', 'min-asym', 'max-asym');
+bindRange('in-trim', 'min-trim', 'max-trim');
+bindRange('in-phase', 'min-phase', 'max-phase');
+bindRange('in-height', 'min-height', 'max-height');
+
+document.getElementById('btn-reset-limits').addEventListener('click', () => {
+    for (const [id, range] of Object.entries(RANGE_DEFAULTS)) {
+        const slider = document.getElementById(id);
+        const suffix = id.replace('in-', '');
+        document.getElementById('min-' + suffix).value = range.min;
+        document.getElementById('max-' + suffix).value = range.max;
+        updateRangeVisual(id);
+    }
+});
 
 </script>
 </body>
