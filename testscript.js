@@ -155,8 +155,32 @@
             return { cost, power: avgPower, normPower, valid: (liftPen + thrustPen + gPen) < 0.001 };
         }
 
-        // 4. Random Search (Exploration) - 200 iterations
-        for (let i = 0; i < 200; i++) {
+        // Helper: Constrain Parameters
+        const constrain = (s) => {
+            if (!locks.freq) s.f = Math.max(limits.freq.min, Math.min(limits.freq.max, s.f));
+            if (!locks.amp) s.a = Math.max(limits.amp.min, Math.min(limits.amp.max, s.a));
+            if (!locks.trim) s.tr = Math.max(limits.trim.min, Math.min(limits.trim.max, s.tr));
+            if (!locks.asym) s.as = Math.max(limits.asym.min, Math.min(limits.asym.max, s.as));
+            if (!locks.phase) s.ph = Math.max(limits.phase.min, Math.min(limits.phase.max, s.ph));
+            if (!locks.height) s.h = Math.max(limits.height.min, Math.min(limits.height.max, s.h));
+
+            if (s.h < s.a + 0.02) {
+                if (!locks.height) s.h = s.a + 0.05;
+                else if (!locks.amp) s.a = Math.max(0.05, s.h - 0.05);
+            }
+            return s;
+        };
+
+        // 4. Differential Evolution (Global Search) - 400 iterations
+        // DE is much better at avoiding local minima than random search + hill climbing
+        const popSize = 20;
+        const generations = 20;
+        let population = [];
+        const paramKeys = ['f', 'a', 'tr', 'as', 'ph', 'h'];
+        const limitMap = { f: 'freq', a: 'amp', tr: 'trim', as: 'asym', ph: 'phase', h: 'height' };
+
+        // Initialize Population
+        for (let i = 0; i < popSize; i++) {
             const s = {
                 f: locks.freq ? lockedVals.freq : (limits.freq.min + Math.random() * (limits.freq.max - limits.freq.min)),
                 a: locks.amp ? lockedVals.amp : (limits.amp.min + Math.random() * (limits.amp.max - limits.amp.min)),
@@ -165,24 +189,64 @@
                 ph: locks.phase ? lockedVals.phase : (limits.phase.min + Math.random() * (limits.phase.max - limits.phase.min)),
                 h: locks.height ? lockedVals.height : (limits.height.min + Math.random() * (limits.height.max - limits.height.min))
             };
-            if (s.h < s.a + 0.02) {
-                if (!locks.height) s.h = s.a + 0.05;
-                else if (!locks.amp) s.a = Math.max(0.05, s.h - 0.05);
-            }
-
-            const res = evaluate(s);
+            const validS = constrain(s);
+            const res = evaluate(validS);
+            population.push({ s: validS, cost: res.cost });
+            
             if (res.cost < bestCost) {
                 bestCost = res.cost;
                 bestPower = res.power;
                 bestNormPower = res.normPower;
-                bestState = s;
+                bestState = { ...validS };
                 bestValid = res.valid;
             }
         }
 
-        // 5. Hill Climbing (Refinement) - 300 iterations
-        for (let i = 0; i < 300; i++) {
-            const scale = Math.max(0.05, 1.0 - (i / 300)); 
+        // Evolution Loop
+        for (let g = 0; g < generations; g++) {
+            for (let i = 0; i < popSize; i++) {
+                // Select 3 random distinct agents (a, b, c) != i
+                let idxs = [];
+                while (idxs.length < 3) {
+                    let r = Math.floor(Math.random() * popSize);
+                    if (r !== i && !idxs.includes(r)) idxs.push(r);
+                }
+                const a = population[idxs[0]].s;
+                const b = population[idxs[1]].s;
+                const c = population[idxs[2]].s;
+
+                // Mutation & Crossover (DE/rand/1/bin)
+                const trial = { ...population[i].s };
+                const R = Math.floor(Math.random() * paramKeys.length); // Ensure at least one change
+                
+                paramKeys.forEach((key, idx) => {
+                    if (locks[limitMap[key]]) return;
+                    if (Math.random() < 0.9 || idx === R) { // CR = 0.9
+                        trial[key] = a[key] + 0.7 * (b[key] - c[key]); // F = 0.7
+                    }
+                });
+
+                const validTrial = constrain(trial);
+                const res = evaluate(validTrial);
+
+                // Selection
+                if (res.cost < population[i].cost) {
+                    population[i] = { s: validTrial, cost: res.cost };
+                    if (res.cost < bestCost) {
+                        bestCost = res.cost;
+                        bestPower = res.power;
+                        bestNormPower = res.normPower;
+                        bestState = { ...validTrial };
+                        bestValid = res.valid;
+                    }
+                }
+            }
+        }
+
+        // 5. Final Polish (Local Search) - 100 iterations
+        // Start from the best state found by DE to refine precision
+        for (let i = 0; i < 100; i++) {
+            const scale = Math.max(0.01, 0.2 * (1.0 - (i / 100))); // Small radius
             const s = {
                 f: locks.freq ? lockedVals.freq : (bestState.f + (Math.random() - 0.5) * 0.5 * scale),
                 a: locks.amp ? lockedVals.amp : (bestState.a + (Math.random() - 0.5) * 0.1 * scale),
@@ -192,24 +256,14 @@
                 h: locks.height ? lockedVals.height : (bestState.h + (Math.random() - 0.5) * 0.1 * scale)
             };
 
-            if (!locks.freq) s.f = Math.max(limits.freq.min, Math.min(limits.freq.max, s.f));
-            if (!locks.amp) s.a = Math.max(limits.amp.min, Math.min(limits.amp.max, s.a));
-            if (!locks.trim) s.tr = Math.max(limits.trim.min, Math.min(limits.trim.max, s.tr));
-            if (!locks.asym) s.as = Math.max(limits.asym.min, Math.min(limits.asym.max, s.as));
-            if (!locks.phase) s.ph = Math.max(limits.phase.min, Math.min(limits.phase.max, s.ph));
-            if (!locks.height) s.h = Math.max(limits.height.min, Math.min(limits.height.max, s.h));
+            const validS = constrain(s);
+            const res = evaluate(validS);
             
-            if (s.h < s.a + 0.02) {
-                if (!locks.height) s.h = s.a + 0.05;
-                else if (!locks.amp) s.a = Math.max(0.05, s.h - 0.05);
-            }
-
-            const res = evaluate(s);
             if (res.cost < bestCost) {
                 bestCost = res.cost;
                 bestPower = res.power;
                 bestNormPower = res.normPower;
-                bestState = s;
+                bestState = { ...validS };
                 bestValid = res.valid;
             }
         }
