@@ -2,22 +2,35 @@
     console.clear();
     console.log("%c🚀 STARTING HIGH-RES BATCH OPTIMIZATION (WITH KINEMATICS)...", "color: #2563eb; font-weight: bold; font-size: 14px;");
 
+    // --- 0. DEPENDENCY CHECK & ABSTRACTION ---
+    if (typeof CONFIG === 'undefined' || typeof state === 'undefined' || typeof calculatePhysics === 'undefined') {
+        console.error("❌ CRITICAL: Simulation globals (CONFIG, state, calculatePhysics) not found.");
+        return;
+    }
+
+    // Abstraction layer to localize global dependencies
+    const SIM = {
+        config: CONFIG,
+        state: state,
+        calc: calculatePhysics
+    };
+
     // --- 1. CAPTURE UNCHANGED PARAMETERS ---
     const redBoxUnchanged = {
-        "Foil Setup Mass (kg)": CONFIG.board_mass,
-        "Wing AR": CONFIG.AR,
-        "Drag Coeff (Cd0)": CONFIG.Cd0,
-        "Stab Area (cm²)": (CONFIG.S_stab * 10000).toFixed(0),
-        "Stab AR": CONFIG.AR_stab,
-        "Stab Angle (°)": CONFIG.stab_angle,
-        "Fuselage Length (m)": CONFIG.fuselage_len,
-        "Rider Offset (m)": CONFIG.rider_offset
+        "Foil Setup Mass (kg)": SIM.config.board_mass,
+        "Wing AR": SIM.config.AR,
+        "Drag Coeff (Cd0)": SIM.config.Cd0,
+        "Stab Area (cm²)": (SIM.config.S_stab * 10000).toFixed(0),
+        "Stab AR": SIM.config.AR_stab,
+        "Stab Angle (°)": SIM.config.stab_angle,
+        "Fuselage Length (m)": SIM.config.fuselage_len,
+        "Rider Offset (m)": SIM.config.rider_offset
     };
 
     const greyBoxUnchanged = {
-        "Swing Weight (%)": (CONFIG.swing_weight_ratio * 100).toFixed(0),
-        "System Elasticity (%)": ((1.0 - CONFIG.elastic_efficiency) * 100).toFixed(0),
-        "Added Mass Enabled": CONFIG.enable_added_mass
+        "Swing Weight (%)": (SIM.config.swing_weight_ratio * 100).toFixed(0),
+        "System Elasticity (%)": ((1.0 - SIM.config.elastic_efficiency) * 100).toFixed(0),
+        "Added Mass Enabled": SIM.config.enable_added_mass
     };
 
     console.log("\n%c--- UNCHANGED PARAMETERS (RED BOX) ---", "color: #d946ef; font-weight: bold;");
@@ -92,12 +105,12 @@
     // --- 3. OPTIMIZATION ENGINE ---
     function findOptimalSettings(targetMass, targetAreaCm2, targetSpeedKph) {
         // 1. Apply Configuration
-        CONFIG.mass = targetMass;
-        CONFIG.S = targetAreaCm2 / 10000; // Convert cm² to m²
-        CONFIG.U = targetSpeedKph / 3.6;  // Convert km/h to m/s
+        SIM.config.mass = targetMass;
+        SIM.config.S = targetAreaCm2 / 10000; // Convert cm² to m²
+        SIM.config.U = targetSpeedKph / 3.6;  // Convert km/h to m/s
 
-        const targetLift = (CONFIG.mass + CONFIG.board_mass) * CONFIG.g;
-        const targetRiderWeight = CONFIG.mass * CONFIG.g;
+        const targetLift = (SIM.config.mass + SIM.config.board_mass) * SIM.config.g;
+        const targetRiderWeight = SIM.config.mass * SIM.config.g;
         
         // 2. Limits are now used from the global 'limits' object captured above
 
@@ -110,21 +123,24 @@
         // 3. Evaluation Helper
         function evaluate(s) {
             // Set State
-            state.freq = s.f;
-            state.heave_amp = s.a;
-            CONFIG.pitch_trim_deg = s.tr;
-            CONFIG.asymmetry_factor = s.as;
-            CONFIG.phase_shift_deg = s.ph;
-            CONFIG.ride_height = s.h;
+            SIM.state.freq = s.f;
+            SIM.state.heave_amp = s.a;
+            SIM.config.pitch_trim_deg = s.tr;
+            SIM.config.asymmetry_factor = s.as;
+            SIM.config.phase_shift_deg = s.ph;
+            SIM.config.riding_depth = s.h;
 
             // Run Simulation (Fast Integration)
             let sumLift = 0, sumThrust = 0, sumPower = 0, sumPower4 = 0, sumG = 0;
-            const steps = 40; 
+            
+            // Adaptive Step Count (Improvement)
             const period = 1.0 / s.f;
+            const maxDt = 0.02; // Ensure at least 50Hz sampling
+            const steps = Math.ceil(period / maxDt);
             const dt = period / steps;
 
             for (let i = 0; i < steps; i++) {
-                const phys = calculatePhysics(i * dt);
+                const phys = SIM.calc(i * dt);
                 sumLift += phys.F_hydro_z;
                 sumThrust += phys.thrust;
                 sumPower += phys.power;
@@ -302,7 +318,7 @@
             "Optimal Trim (°)": result.trim.toFixed(1),
             "Optimal Asym": result.asym.toFixed(2),
             "Optimal Phase (°)": result.phase.toFixed(0),
-            "Optimal Height (m)": result.height.toFixed(2),
+            "Optimal Depth (m)": result.height.toFixed(2),
             "Valid": result.valid
         });
     });

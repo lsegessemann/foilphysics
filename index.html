@@ -454,8 +454,8 @@
             <!-- GROUP 1: SPEED -->
             <div style="background-color: #f0f9ff; padding: 8px; border-radius: 6px; border: 1px solid #bae6fd; display: flex; flex-direction: column; gap: 8px;">
                 <div class="control-group" title="Forward velocity of the rider.">
-                    <label>Speed: <span id="disp-speed">20.0</span> km/h</label>
-                    <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="20.0">
+                    <label>Speed: <span id="disp-speed">17.0</span> km/h</label>
+                    <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="17.0">
                 </div>
             </div>
 
@@ -463,14 +463,14 @@
             <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px;">
                 <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Frequency: <span id="disp-freq">1.65</span> Hz <span style="font-weight:normal; color:#666;">(<span id="disp-ppm">99</span> ppm)</span></label>
+                        <label>Frequency: <span id="disp-freq">1.49</span> Hz <span style="font-weight:normal; color:#666;">(<span id="disp-ppm">89</span> ppm)</span></label>
                         <div style="display:flex; align-items:center; gap:6px;">
                             <span class="range-toggle" data-target="range-freq" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
                             <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
                         </div>
                     </div>
                     <div class="slider-wrapper">
-                        <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.65">
+                        <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.49">
                         <div class="limit-handle min-handle" data-for="in-freq" data-type="min"></div>
                         <div class="limit-handle max-handle" data-for="in-freq" data-type="max"></div>
                     </div>
@@ -481,14 +481,14 @@
                 </div>
                 <div class="control-group" title="Vertical range of motion for the foil path.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Amplitude: <span id="disp-amp">0.13</span> m</label>
+                        <label>Amplitude: <span id="disp-amp">0.11</span> m</label>
                         <div style="display:flex; align-items:center; gap:6px;">
                             <span class="range-toggle" data-target="range-amp" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
                             <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-amp" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
                         </div>
                     </div>
                     <div class="slider-wrapper">
-                        <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.13">
+                        <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.11">
                         <div class="limit-handle min-handle" data-for="in-amp" data-type="min"></div>
                         <div class="limit-handle max-handle" data-for="in-amp" data-type="max"></div>
                     </div>
@@ -517,14 +517,14 @@
                 </div>
                 <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Front Wing Pitch: <span id="disp-trim">3.3</span>°</label>
+                        <label>Front Wing Pitch: <span id="disp-trim">4.9</span>°</label>
                         <div style="display:flex; align-items:center; gap:6px;">
                             <span class="range-toggle" data-target="range-trim" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
                             <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-trim" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
                         </div>
                     </div>
                     <div class="slider-wrapper">
-                        <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="3.3">
+                        <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="4.9">
                         <div class="limit-handle min-handle" data-for="in-trim" data-type="min"></div>
                         <div class="limit-handle max-handle" data-for="in-trim" data-type="max"></div>
                     </div>
@@ -553,7 +553,7 @@
                 </div>
                 <div class="control-group" title="Average distance from the water surface to the wing. Lower = Less Drag but Risk of Breach.">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Ride Height: <span id="disp-height">0.20</span> m</label>
+                        <label>Riding Depth: <span id="disp-height">0.20</span> m</label>
                         <div style="display:flex; align-items:center; gap:6px;">
                             <span class="range-toggle" data-target="range-height" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
                             <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-height" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
@@ -581,7 +581,7 @@
 
             <div class="tooltip" style="width: 100%; border-bottom: none;">
                 <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
-                <span class="tooltip-text" style="width: 200px; text-align: center;">These might not be the overall best values wrt power (might be a local minimum)</span>
+                <span class="tooltip-text" style="width: 200px; text-align: center;">This might not result in the best absolute values wrt power efficiency (might be a local minimum)</span>
             </div>
             <div style="text-align: center; margin-top: 4px;">
                 <button id="btn-reset-limits" style="background:none; border:none; cursor: pointer; font-size: 9px; color: #94a3b8; font-weight: bold;">↺ RESET RANGES</button>
@@ -807,7 +807,7 @@
 const CONFIG = {
     mass: 70.0,          // Rider mass in kg
     board_mass: 6.0,     // Mass of the board + foil + wet gear (kg)
-    U: 20.0 / 3.6,       // Forward speed in m/s (converted from km/h)
+    U: 17.0 / 3.6,       // Forward speed in m/s (converted from km/h)
     rho: 1000.0,         // Water density in kg/m³
     S: 0.135,            // Wing area in m² (e.g., 1350 cm² = 0.135 m²)
     Cd0: 0.013,          // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
@@ -824,10 +824,10 @@ const CONFIG = {
     fuselage_len: 0.60,  // Distance from Mast to Stabilizer (m)
     stab_angle: -1.0,    // Stabilizer incidence angle (degrees) - usually negative!
     rider_offset: 0.0,   // Rider's feet position relative to CoL (m)
-    ride_height: 0.20,   // Average depth of the wing (m)
+    riding_depth: 0.20,   // Average depth of the wing (m)
     
     // Adjustable Parameters
-    pitch_trim_deg: 3.3,    // Base pitch angle in degrees
+    pitch_trim_deg: 4.9,    // Base pitch angle in degrees
     phase_shift_deg: 90.0,  // Phase difference between Heave and Pitch
     swing_weight_ratio: 0.4, // Percentage of body mass considered moving (legs + arms)
     elastic_efficiency: 1.0,  // Rider elastic efficiency
@@ -845,8 +845,8 @@ let state = {
     historyTimer: 0,
     paused: false,
     slowMotion: false,
-    freq: 1.65,
-    heave_amp: 0.13,
+    freq: 1.49,
+    heave_amp: 0.11,
     pathX: [],
     pathZ: [],
     liftHistory: [],
@@ -1030,7 +1030,7 @@ function calculatePhysics(t) {
     let D_stab_z = -D_stab_mag * Math.sin(gamma_stab);
 
     // --- 3c. VARIABLE MAST DRAG & SURFACE BREACH ---
-    const mean_depth = CONFIG.ride_height;  
+    const mean_depth = CONFIG.riding_depth;  
     let depth = mean_depth - z;
     
     // Initialize mast drag components
@@ -1614,7 +1614,7 @@ function render(data) {
     ctx.moveTo(-10000, 0); ctx.lineTo(10000, 0); ctx.stroke();
     
     // Water Surface
-    const surfaceZ = CONFIG.ride_height; 
+    const surfaceZ = CONFIG.riding_depth; 
     const surfaceY = -surfaceZ * PPU;
     ctx.fillStyle = 'rgba(0, 160, 255, 0.1)';
     ctx.fillRect(camX - 2000, surfaceY, 4000, 1000);
@@ -1897,10 +1897,10 @@ function render(data) {
 document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(2); ui.dispPpm.textContent = (state.freq * 60).toFixed(0); });
 document.getElementById('in-amp').addEventListener('input', (e) => { 
     let val = parseFloat(e.target.value);
-    if (val > CONFIG.ride_height - 0.02) {
-        CONFIG.ride_height = Math.min(0.80, val + 0.02);
-        document.getElementById('in-height').value = CONFIG.ride_height;
-        ui.dispHeight.textContent = CONFIG.ride_height.toFixed(2);
+    if (val > CONFIG.riding_depth - 0.02) {
+        CONFIG.riding_depth = Math.min(0.80, val + 0.02);
+        document.getElementById('in-height').value = CONFIG.riding_depth;
+        ui.dispHeight.textContent = CONFIG.riding_depth.toFixed(2);
     }
     state.heave_amp = val; 
     ui.dispAmp.textContent = state.heave_amp.toFixed(2); 
@@ -1931,8 +1931,8 @@ document.getElementById('in-height').addEventListener('input', (e) => {
         document.getElementById('in-amp').value = state.heave_amp;
         ui.dispAmp.textContent = state.heave_amp.toFixed(2);
     }
-    CONFIG.ride_height = val; 
-    ui.dispHeight.textContent = CONFIG.ride_height.toFixed(2); 
+    CONFIG.riding_depth = val; 
+    ui.dispHeight.textContent = CONFIG.riding_depth.toFixed(2); 
 });
 
 document.getElementById('btn-optimize').addEventListener('click', () => {
@@ -1961,7 +1961,7 @@ function runOptimization() {
     const originalTrim = CONFIG.pitch_trim_deg;
     const originalAsym = CONFIG.asymmetry_factor;
     const originalPhase = CONFIG.phase_shift_deg;
-    const originalHeight = CONFIG.ride_height;
+    const originalHeight = CONFIG.riding_depth;
 
     // Check locks
     const lockFreq = document.getElementById('lock-freq').checked;
@@ -1994,7 +1994,7 @@ function runOptimization() {
         CONFIG.pitch_trim_deg = tr;
         CONFIG.asymmetry_factor = as;
         CONFIG.phase_shift_deg = ph;
-        CONFIG.ride_height = h;
+        CONFIG.riding_depth = h;
 
         let sumLift = 0;
         let sumThrust = 0;
@@ -2145,7 +2145,7 @@ function runOptimization() {
         CONFIG.pitch_trim_deg = finalResult.tr;
         CONFIG.asymmetry_factor = finalResult.as;
         CONFIG.phase_shift_deg = finalResult.ph;
-        CONFIG.ride_height = finalResult.h;
+        CONFIG.riding_depth = finalResult.h;
     }
 
     // Update UI
@@ -2155,24 +2155,24 @@ function runOptimization() {
     document.getElementById('in-trim').value = CONFIG.pitch_trim_deg; ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1);
     document.getElementById('in-asym').value = CONFIG.asymmetry_factor; ui.dispAsym.textContent = CONFIG.asymmetry_factor.toFixed(2);
     document.getElementById('in-phase').value = CONFIG.phase_shift_deg; ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0);
-    document.getElementById('in-height').value = CONFIG.ride_height; ui.dispHeight.textContent = CONFIG.ride_height.toFixed(2);
+    document.getElementById('in-height').value = CONFIG.riding_depth; ui.dispHeight.textContent = CONFIG.riding_depth.toFixed(2);
     
     // Clear history
     state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.normPowerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = []; state.gForceHistory = []; state.avgGForceHistory = [];
 }
 
 document.getElementById('btn-reset').addEventListener('click', () => {
-    state.freq = 1.65; document.getElementById('in-freq').value = 1.65; ui.dispFreq.textContent = "1.65";
-    ui.dispPpm.textContent = "99";
-    state.heave_amp = 0.13; document.getElementById('in-amp').value = 0.13; ui.dispAmp.textContent = "0.13";
+    state.freq = 1.49; document.getElementById('in-freq').value = 1.49; ui.dispFreq.textContent = "1.49";
+    ui.dispPpm.textContent = "89";
+    state.heave_amp = 0.11; document.getElementById('in-amp').value = 0.11; ui.dispAmp.textContent = "0.11";
     CONFIG.asymmetry_factor = 0.0; document.getElementById('in-asym').value = 0.0; ui.dispAsym.textContent = "0.00";
-    CONFIG.U = 20.0 / 3.6; document.getElementById('in-speed').value = 20.0; ui.dispSpeed.textContent = "20.0";
+    CONFIG.U = 17.0 / 3.6; document.getElementById('in-speed').value = 17.0; ui.dispSpeed.textContent = "17.0";
     CONFIG.mass = 70.0; document.getElementById('in-mass').value = 70; ui.dispMass.textContent = "70";
     CONFIG.board_mass = 6.0; document.getElementById('in-board-mass').value = 6.0; ui.dispBoardMass.textContent = "6.0";
     CONFIG.S = 0.135; document.getElementById('in-area').value = 1350; ui.dispArea.textContent = "1350";
     CONFIG.AR = 13.9; document.getElementById('in-ar').value = 13.9; ui.dispAr.textContent = "13.9";
     CONFIG.Cd0 = 0.013; document.getElementById('in-cd0').value = 0.013; ui.dispCd0.textContent = "0.013";
-    CONFIG.pitch_trim_deg = 3.3; document.getElementById('in-trim').value = 3.3; ui.dispTrim.textContent = "3.3";
+    CONFIG.pitch_trim_deg = 4.9; document.getElementById('in-trim').value = 4.9; ui.dispTrim.textContent = "4.9";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     document.getElementById('lock-phase').checked = true;
     CONFIG.swing_weight_ratio = 0.4; document.getElementById('in-swing').value = 0.4; ui.dispSwing.textContent = "40";
@@ -2185,7 +2185,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.AR_stab = 8.0; document.getElementById('in-stab-ar').value = 8.0; ui.dispStabAr.textContent = "8.0";
     CONFIG.fuselage_len = 0.60; document.getElementById('in-fuse-len').value = 0.60; ui.dispFuseLen.textContent = "0.60";
     CONFIG.rider_offset = 0.0; document.getElementById('in-offset').value = 0.0; ui.dispOffset.textContent = "0.00";
-    CONFIG.ride_height = 0.20; document.getElementById('in-height').value = 0.20; ui.dispHeight.textContent = "0.20";
+    CONFIG.riding_depth = 0.20; document.getElementById('in-height').value = 0.20; ui.dispHeight.textContent = "0.20";
     document.getElementById('lock-height').checked = true;
     
     // Clear history for clean restart
@@ -2413,7 +2413,7 @@ function applyPresetState(p) {
     CONFIG.asymmetry_factor = p.asym;
     CONFIG.pitch_trim_deg = p.trim;
     CONFIG.phase_shift_deg = p.phase;
-    CONFIG.ride_height = p.height;
+    CONFIG.riding_depth = p.height;
     CONFIG.mass = p.mass;
     CONFIG.board_mass = p.boardMass || 6.0;
     CONFIG.S = p.area / 10000;
@@ -2558,7 +2558,7 @@ document.getElementById('btn-tests').addEventListener('click', () => {
         CONFIG.phase_shift_deg = 90.0; // Standard phase
         CONFIG.elastic_efficiency = 1.0;
         
-        CONFIG.stab_angle = 0; CONFIG.S_stab = 0; CONFIG.fuselage_len = 0.7; CONFIG.ride_height = 0.2;
+        CONFIG.stab_angle = 0; CONFIG.S_stab = 0; CONFIG.fuselage_len = 0.7; CONFIG.riding_depth = 0.2;
     }
 
     function assert(testName, actual, expected, tolerance = 0.01) {
@@ -2583,14 +2583,14 @@ document.getElementById('btn-tests').addEventListener('click', () => {
     const expLift = 0.5 * CONFIG.rho * CONFIG.S * ((2 * Math.PI * (2*Math.PI/180)) / (1 + 2/CONFIG.AR)) * (CONFIG.U * CONFIG.U);
     assert(`Lift at 2° matches Linear Theory`, calculatePhysics(0).Lz, expLift, 1.0);
 
-    resetSim(); CONFIG.ride_height = 0.2; 
+    resetSim(); CONFIG.riding_depth = 0.2; 
     const k = 1 / (Math.PI * CONFIG.AR); const cl = (2 * Math.PI * (2*Math.PI/180)) / (1 + 2/CONFIG.AR);
     const d_wing = 0.5 * CONFIG.rho * CONFIG.S * (CONFIG.Cd0 + k * cl*cl) * CONFIG.U**2;
     const d_mast = 0.5 * CONFIG.rho * (0.2 * 0.015) * 0.12 * CONFIG.U**2;
     CONFIG.pitch_trim_deg = 2.0; 
     assert(`Total Drag at 2° (Wing + Mast)`, Math.abs(calculatePhysics(0).Dx), d_wing + d_mast, 0.5);
 
-    resetSim(); CONFIG.ride_height = 0.2; state.heave_amp = 0.3; 
+    resetSim(); CONFIG.riding_depth = 0.2; state.heave_amp = 0.3; 
     assert("Lift drops to 0 when breached", calculatePhysics(0).Lz, 0);
 
     resetSim(); CONFIG.pitch_trim_deg = 15.0; 
