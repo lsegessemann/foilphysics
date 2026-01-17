@@ -1,3 +1,21 @@
+## How to Use the App
+This tool is a theoretical simulator designed to help you visualize and optimize the physics of pump foiling.
+
+**Set Your Gear:** Scroll down to the bottom sections to input your Rider Mass, Wing Area, and Setup Mass etc.
+
+**Adjust the Pump:** Use the sliders in the middle to change the pumping motion. The most critical controls are:
+
+- **Frequency:** How fast you are pumping (strokes per minute).
+- **Amplitude:** How big your up-and-down motion is (heave).
+- **Front Wing Pitch:** This sets the average angle of your foil. Increasing this gives you more lift (keeping you flying at lower speeds), but significantly increases drag. You need to find the sweet spot where you generate enough lift to stay up without stalling.
+- **Phase Shift:** This controls the timing between your vertical motion and the pitching of the board.
+  - **90° (Standard):** You pitch the nose down exactly as you start pushing down.
+  - **Higher (>90°):** You pitch the nose down early (before you start dropping), which is often required for high-efficiency pumping to "get over the hump."
+
+**Analyze the Data:** Watch the Live Telemetry at the top. Your goal is to keep Average Lift "Balanced" (green) while keeping Average Power as low as possible.
+
+**Auto-Tune:** If you are unsure, click "Find Settings Magically" to let the app mathematically calculate the most viable technique for your chosen speed. It might be that the solver is not able to find a solution if too many parameters are "locked" or the setup is unsuitable for a given speed.
+
 ## Physics Model
 
 The simulation uses a custom quasi-steady solver that iterates through time steps ($dt$) to calculate forces and rider power.

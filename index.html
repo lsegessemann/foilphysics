@@ -662,6 +662,28 @@
         <details id="readme-dropdown">
             <summary>Documentation & About</summary>
             <div class="readme-content">
+                <h2>How to Use the App</h2>
+                <p>This tool is a theoretical simulator designed to help you visualize and optimize the physics of pump foiling.</p>
+
+                <p><strong>Set Your Gear:</strong> Scroll down to the bottom sections to input your Rider Mass, Wing Area, and Setup Mass etc.</p>
+
+                <p><strong>Adjust the Pump:</strong> Use the sliders in the middle to change the pumping motion. The most critical controls are:</p>
+                <ul>
+                    <li><strong>Frequency:</strong> How fast you are pumping (strokes per minute).</li>
+                    <li><strong>Amplitude:</strong> How big your up-and-down motion is (heave).</li>
+                    <li><strong>Front Wing Pitch:</strong> This sets the average angle of your foil. Increasing this gives you more lift (keeping you flying at lower speeds), but significantly increases drag. You need to find the sweet spot where you generate enough lift to stay up without stalling.</li>
+                    <li><strong>Phase Shift:</strong> This controls the timing between your vertical motion and the pitching of the board.
+                        <ul>
+                            <li><strong>90&deg; (Standard):</strong> You pitch the nose down exactly as you start pushing down.</li>
+                            <li><strong>Higher (&gt;90&deg;):</strong> You pitch the nose down early (before you start dropping), which is often required for high-efficiency pumping to "get over the hump."</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <p><strong>Analyze the Data:</strong> Watch the Live Telemetry at the top. Your goal is to keep Average Lift "Balanced" (green) while keeping Average Power as low as possible.</p>
+
+                <p><strong>Auto-Tune:</strong> If you are unsure, click "Find Settings Magically" to let the app mathematically calculate the most viable technique for your chosen speed. It might be that the solver is not able to find a solution if too many parameters are "locked" or the setup is unsuitable for a given speed.</p>
+
                 <h2>Physics Model</h2>
                 <p>The simulation uses a custom quasi-steady solver that iterates through time steps (<i>dt</i>) to calculate forces and rider power.</p>
 
