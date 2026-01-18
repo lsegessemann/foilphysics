@@ -4,354 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1024, user-scalable=yes">
     <title>Pump Foil Simulator (Angle Telemetry)</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f0f0;
-            background-color: #f4f4f5;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-            padding: 10px;
-            box-sizing: border-box;
-            overflow: auto;
-        }
-
-        #main-container {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            width: 100%;
-            max-width: 900px;
-            min-width: 900px;
-        }
-
-        .canvas-wrapper {
-            position: relative;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border-radius: 12px;
-            border: 1px solid rgba(0,0,0,0.05);
-            overflow: hidden;
-        }
-
-        canvas {
-            display: block;
-            cursor: crosshair;
-            width: 100%;
-            height: auto;
-        }
-
-        #ui-overlay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            left: auto;
-            background-color: rgba(255, 255, 255, 0.95);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            pointer-events: auto;
-            font-family: monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            min-width: 260px;
-            z-index: 10;
-        }
-
-        #controls {
-            background-color: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 300px;
-            box-sizing: border-box;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 110px;
-        }
-
-        label {
-            font-size: 10px;
-            font-weight: bold;
-            color: #666;
-            text-transform: uppercase;
-        }
-
-        input[type=range] {
-            height: 4px;
-            -webkit-appearance: none;
-            width: 100%;
-            background: #e2e8f0;
-            margin: 6px 0;
-            border-radius: 3px;
-        }
-        input[type=range]:focus {
-            outline: none;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 6px;
-            cursor: pointer;
-            background: transparent;
-            border-radius: 3px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            -webkit-appearance: none;
-            margin-top: -5px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-            transition: transform 0.1s;
-        }
-        input[type=range]::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-        }
-
-        .dot { width: 8px; height: 8px; border-radius: 50%; }
-        input[type=checkbox] { cursor: pointer; }
-        kbd {
-            background-color: #eee;
-            border-radius: 3px;
-            border: 1px solid #b4b4b4;
-            padding: 2px 4px;
-            font-size: 9px;
-            font-weight: 700;
-        }
-
-        #dashboard-row {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: nowrap;
-            gap: 10px;
-            width: 100%;
-        }
-        #graphs-column {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex: 1;
-        }
-
-        /* Make graphs fill the available height to align with controls */
-        #graphs-column .canvas-wrapper:not(#avgThrustStatus):not(#avgLiftStatus) {
-            display: flex;
-            flex-direction: column;
-        }
-        #graphs-column .canvas-wrapper:not(#avgThrustStatus):not(#avgLiftStatus) canvas {
-            width: 100%;
-            height: auto;
-        }
-
-        @media (max-width: 768px) {
-            #ui-overlay {
-                font-size: 11px;
-                padding: 10px;
-                min-width: 140px;
-                right: 10px;
-                top: 10px;
-            }
-        }
-
-        /* Custom Tooltip */
-        .tooltip {
-            position: relative;
-            display: inline-block;
-            cursor: help;
-            border-bottom: 1px dotted #888;
-        }
-        .tooltip .tooltip-text {
-            visibility: hidden;
-            width: 220px;
-            background-color: #333;
-            color: #fff;
-            text-align: left;
-            border-radius: 6px;
-            padding: 8px 10px;
-            position: absolute;
-            z-index: 100;
-            top: 50%;
-            right: 105%;
-            transform: translateY(-50%);
-            opacity: 0;
-            transition: opacity 0.1s;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            font-size: 11px;
-            line-height: 1.4;
-            font-weight: normal;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            pointer-events: none;
-        }
-        .tooltip .tooltip-text::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 100%;
-            margin-top: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: transparent transparent transparent #333;
-        }
-        .tooltip:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        #slowmo-controls {
-            position: absolute;
-            bottom: 15px;
-            left: 20px;
-            background-color: rgba(255, 255, 255, 0.90);
-            padding: 6px 10px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 6px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #555;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 10;
-        }
-
-        #visibility-controls {
-            position: absolute;
-            bottom: 15px;
-            right: 20px;
-            background-color: rgba(255, 255, 255, 0.90);
-            padding: 6px 10px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            display: grid;
-            grid-template-columns: repeat(4, auto);
-            gap: 4px 12px;
-            font-size: 10px;
-            font-weight: bold;
-            color: #555;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 10;
-        }
-        .legend-item { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
-
-        @media (max-width: 768px) {
-            #visibility-controls {
-                grid-template-columns: repeat(3, auto);
-                right: 10px;
-            }
-        }
-
-        /* Documentation Dropdown */
-        details {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(0,0,0,0.05);
-            overflow: hidden;
-            width: 100%;
-            margin-top: 15px;
-            box-sizing: border-box;
-        }
-        summary {
-            padding: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            background-color: #fff;
-            font-size: 14px;
-            color: #333;
-            list-style: none;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        summary::-webkit-details-marker {
-            display: none;
-        }
-        summary::after {
-            content: '+';
-            font-size: 18px;
-            font-weight: bold;
-            color: #666;
-        }
-        details[open] summary::after {
-            content: '-';
-        }
-        details[open] summary {
-            border-bottom: 1px solid #eee;
-        }
-        .readme-content {
-            padding: 20px;
-            font-size: 13px;
-            line-height: 1.6;
-            color: #444;
-        }
-        .readme-content h1 { font-size: 18px; margin-top: 0; margin-bottom: 10px; color: #222; }
-        .readme-content h2 { font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #333; }
-        .readme-content p { margin-bottom: 10px; }
-        .readme-content ul { margin-bottom: 10px; padding-left: 20px; }
-        .readme-content li { margin-bottom: 4px; }
-        .readme-content a { color: #3b82f6; text-decoration: none; }
-        .readme-content a:hover { text-decoration: underline; }
-
-        /* Slider Handles */
-        .slider-wrapper {
-            position: relative;
-            width: 100%;
-            height: 12px;
-            display: flex;
-            align-items: center;
-        }
-        .slider-wrapper input[type=range] {
-            margin: 0;
-            z-index: 1;
-        }
-        .limit-handle {
-            position: absolute;
-            top: 0; bottom: 0;
-            width: 20px; /* Large hit area */
-            cursor: ew-resize;
-            z-index: 10;
-            transform: translateX(-50%);
-            touch-action: none;
-        }
-        .limit-handle::after {
-            content: '';
-            position: absolute;
-            left: 8px; /* Center of 20px is 10px. 4px width -> start at 8px */
-            top: 2px; bottom: 2px;
-            width: 4px;
-            background-color: #ef4444;
-            border-radius: 2px;
-            pointer-events: none;
-        }
-        .limit-handle:hover::after {
-            background-color: #dc2626;
-            box-shadow: 0 0 4px rgba(0,0,0,0.2);
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+    <header id="main-header">
+        <div id="header-title">Pump Foil Simulator</div>
+        <button id="doc-toggle">Documentation & About</button>
+    </header>
 
     <div id="main-container">
         <div class="canvas-wrapper">
@@ -359,7 +19,7 @@
             <div id="ui-overlay">
                 <strong>Live Telemetry</strong><br>
                 Time: <span id="val-time">0.00</span> s<br>
-                <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
+                <hr>
                 Pitch (vs Horizon): <span id="val-pitch">0.0</span>°<br>
                 <span class="tooltip">AoA (vs Water flow)
                     <span class="tooltip-text">
@@ -369,32 +29,32 @@
                         • In a pump, plunging down increases your AoA, while rising up decreases it.
                     </span>
                 </span>: <span id="val-aoa">0.0</span>°<br>
-                <hr style="border: 0; border-top: 1px solid #ddd; margin: 4px 0;">
+                <hr>
                 Instantaneous Power: <span id="val-watts">0</span> W<br>
                 Average Power: <span id="val-avg-watts">0</span> W<br>
                 Normalized Power: <span id="val-norm-watts">0</span> W<br>
                 Power/Weight: <span id="val-wkg">0.0</span> W/kg
             </div>
             <div id="slowmo-controls">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <input type="checkbox" id="chk-slowmo" style="cursor: pointer;">
-                    <label for="chk-slowmo" style="cursor: pointer; user-select: none;">Slow Motion</label>
+                <div class="slowmo-row">
+                    <input type="checkbox" id="chk-slowmo">
+                    <label for="chk-slowmo" class="cursor-pointer user-select-none">Slow Motion</label>
                 </div>
-                <div style="font-size: 9px; color: #555; font-weight: normal; display: flex; gap: 10px;">
-                    <span id="cmd-pause" style="cursor: pointer; user-select: none;" title="Toggle Pause"><kbd>SPACE</kbd> Pause</span>
-                    <span id="cmd-rewind" style="cursor: pointer; user-select: none;" title="Step Back"><kbd>&larr;</kbd> Rewind</span>
-                    <span id="cmd-forward" style="cursor: pointer; user-select: none;" title="Step Forward"><kbd>&rarr;</kbd> Forward</span>
+                <div class="slowmo-commands">
+                    <span id="cmd-pause" class="cmd-button" title="Toggle Pause"><kbd>SPACE</kbd> Pause</span>
+                    <span id="cmd-rewind" class="cmd-button" title="Step Back"><kbd>&larr;</kbd> Rewind</span>
+                    <span id="cmd-forward" class="cmd-button" title="Step Forward"><kbd>&rarr;</kbd> Forward</span>
                 </div>
             </div>
             <div id="visibility-controls">
-                <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot" style="background: blue;"></div> Lift</label>
-                <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot" style="background: red;"></div> Drag</label>
-                <label class="legend-item" title="Force applied by the rider's feet on the board. Includes leg weight (visible even at 0 lift due to simulation rail)."><input type="checkbox" id="chk-rider" checked><div class="dot" style="background: orange;"></div> Rider</label>
-                <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot" style="background: cyan; border:1px solid #999;"></div> Thrust</label>
-                <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot" style="background: rgb(255, 251, 0);"></div> G-Force</label>
-                <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot" style="background: #666;"></div> Board+Rider</label>
-                <label class="legend-item"><input type="checkbox" id="chk-stab" checked><div class="dot" style="background: #d946ef;"></div> Stabilizer</label>
-                <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot" style="background: lime; border:1px solid #333;"></div> Net Force</label>
+                <label class="legend-item"><input type="checkbox" id="chk-lift" checked><div class="dot dot-lift"></div> Lift</label>
+                <label class="legend-item"><input type="checkbox" id="chk-drag" checked><div class="dot dot-drag"></div> Drag</label>
+                <label class="legend-item" title="Force applied by the rider's feet on the board. Includes leg weight (visible even at 0 lift due to simulation rail)."><input type="checkbox" id="chk-rider" checked><div class="dot dot-rider"></div> Rider</label>
+                <label class="legend-item"><input type="checkbox" id="chk-thrust" checked><div class="dot dot-thrust"></div> Thrust</label>
+                <label class="legend-item"><input type="checkbox" id="chk-weight"><div class="dot dot-weight"></div> G-Force</label>
+                <label class="legend-item"><input type="checkbox" id="chk-assembly" checked><div class="dot dot-assembly"></div> Board+Rider</label>
+                <label class="legend-item"><input type="checkbox" id="chk-stab" checked><div class="dot dot-stab"></div> Stabilizer</label>
+                <label class="legend-item"><input type="checkbox" id="chk-net"><div class="dot dot-net"></div> Net Force</label>
                 <label class="legend-item" title="Toggle between accurate 1:1 scaling and exaggerated scaling for small forces"><input type="checkbox" id="chk-true-scale" checked> True Scale</label>
             </div>
         </div>
@@ -404,19 +64,19 @@
                 <div class="canvas-wrapper">
                     <canvas id="graphLift" width="1300" height="260"></canvas>
                 </div>
-                <div class="canvas-wrapper" id="avgLiftStatus" style="padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background-color: #e8f5e9;">
+                <div class="canvas-wrapper status-box status-box-lift" id="avgLiftStatus">
                     Avg Lift: Balanced : <span id="val-avg-lift">0</span> N
                 </div>
                 <div class="canvas-wrapper">
                     <canvas id="graphThrust" width="1300" height="260"></canvas>
                 </div>
-                <div class="canvas-wrapper" id="avgThrustStatus" style="padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background-color: #e8f5e9;">
+                <div class="canvas-wrapper status-box status-box-thrust" id="avgThrustStatus">
                     Avg Thrust: Accelerating : <span id="val-avg-thrust">0</span> N
                 </div>
                 <div class="canvas-wrapper">
                     <canvas id="graphGForce" width="1300" height="260"></canvas>
                 </div>
-                <div class="canvas-wrapper" id="avgGForceStatus" style="padding: 8px; text-align: center; font-size: 12px; font-weight: bold; background-color: #f3e5f5;">
+                <div class="canvas-wrapper status-box status-box-gforce" id="avgGForceStatus">
                     Avg Rider G-Force: <span id="val-avg-gforce">0</span> G
                 </div>
                 <div class="canvas-wrapper">
@@ -429,166 +89,29 @@
                     <canvas id="graphPowerComp" width="1300" height="260"></canvas>
                 </div>
 
-                <!-- GROUP: PRESETS (Moved) -->
-                <div style="background-color: #fff7ed; padding: 8px; border-radius: 6px; border: 1px solid #ffedd5; display: flex; flex-direction: column; gap: 8px;">
+                <div id="presets-section">
                     <div class="control-group" title="Save and load configurations.">
                         <label>Presets</label>
-                        <div style="display:flex; gap:5px;">
-                            <select id="preset-select" style="flex:1; font-size:11px; padding:4px; border-radius:4px; border:1px solid #ccc;">
+                        <div class="preset-select-row">
+                            <select id="preset-select">
                                 <option value="">-- Select --</option>
                             </select>
                         </div>
-                        <div style="display:flex; gap:5px; margin-top:4px;">
-                            <button id="btn-save-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#d97706;">SAVE</button>
-                            <button id="btn-delete-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#dc2626;">DELETE</button>
-                            <button id="btn-download-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#2563eb;">DOWNLOAD</button>
-                            <button id="btn-upload-preset" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#059669;">UPLOAD</button>
-                            <button id="btn-reset-presets" style="flex:1; cursor:pointer; font-size:10px; padding:4px; background:#fff; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#4b5563;" title="Restore default presets">RESET</button>
+                        <div class="preset-buttons-row">
+                            <button id="btn-save-preset" class="preset-button">SAVE</button>
+                            <button id="btn-delete-preset" class="preset-button">DELETE</button>
+                            <button id="btn-download-preset" class="preset-button">DOWNLOAD</button>
+                            <button id="btn-upload-preset" class="preset-button">UPLOAD</button>
+                            <button id="btn-reset-presets" class="preset-button" title="Restore default presets">RESET</button>
                         </div>
-                        <input type="file" id="file-upload-preset" style="display:none" accept=".json">
+                        <input type="file" id="file-upload-preset" accept=".json">
                     </div>
                 </div>
             </div>
             
             <div id="controls">
-            <!-- GROUP 1: SPEED -->
-            <div style="background-color: #f0f9ff; padding: 8px; border-radius: 6px; border: 1px solid #bae6fd; display: flex; flex-direction: column; gap: 8px;">
-                <div class="control-group" title="Forward velocity of the rider.">
-                    <label>Speed: <span id="disp-speed">17.0</span> km/h</label>
-                    <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="17.0">
-                </div>
-            </div>
-
-            <!-- GROUP 2: KINEMATICS -->
-            <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px;">
-                <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Frequency: <span id="disp-freq">1.49</span> Hz <span style="font-weight:normal; color:#666;">(<span id="disp-ppm">89</span> ppm)</span></label>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="range-toggle" data-target="range-freq" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
-                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-freq" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
-                        </div>
-                    </div>
-                    <div class="slider-wrapper">
-                        <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.49">
-                        <div class="limit-handle min-handle" data-for="in-freq" data-type="min"></div>
-                        <div class="limit-handle max-handle" data-for="in-freq" data-type="max"></div>
-                    </div>
-                    <div id="range-freq" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-freq" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-freq" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                    </div>
-                </div>
-                <div class="control-group" title="Vertical range of motion for the foil path.">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Amplitude: <span id="disp-amp">0.11</span> m</label>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="range-toggle" data-target="range-amp" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
-                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-amp" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
-                        </div>
-                    </div>
-                    <div class="slider-wrapper">
-                        <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.11">
-                        <div class="limit-handle min-handle" data-for="in-amp" data-type="min"></div>
-                        <div class="limit-handle max-handle" data-for="in-amp" data-type="max"></div>
-                    </div>
-                    <div id="range-amp" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-amp" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-amp" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                    </div>
-                </div>
-                <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Asymmetry: <span id="disp-asym">0.00</span></label>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="range-toggle" data-target="range-asym" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
-                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-asym" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
-                        </div>
-                    </div>
-                    <div class="slider-wrapper">
-                        <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
-                        <div class="limit-handle min-handle" data-for="in-asym" data-type="min"></div>
-                        <div class="limit-handle max-handle" data-for="in-asym" data-type="max"></div>
-                    </div>
-                    <div id="range-asym" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-asym" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-asym" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                    </div>
-                </div>
-                <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Front Wing Pitch: <span id="disp-trim">4.9</span>°</label>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="range-toggle" data-target="range-trim" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
-                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-trim" style="margin:0 3px 0 0; vertical-align:middle;"> LOCK</label>
-                        </div>
-                    </div>
-                    <div class="slider-wrapper">
-                        <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="4.9">
-                        <div class="limit-handle min-handle" data-for="in-trim" data-type="min"></div>
-                        <div class="limit-handle max-handle" data-for="in-trim" data-type="max"></div>
-                    </div>
-                    <div id="range-trim" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-trim" step="0.1" style="width:50px; font-size:10px; padding:1px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-trim" step="0.1" style="width:50px; font-size:10px; padding:1px;">
-                    </div>
-                </div>
-                <div class="control-group" title="Timing difference between heave and pitch. 90° is ideal (Pitch follows Velocity). Range: 80°-110°.">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Phase Shift: <span id="disp-phase">90</span>°</label>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="range-toggle" data-target="range-phase" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
-                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-phase" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
-                        </div>
-                    </div>
-                    <div class="slider-wrapper">
-                        <input type="range" id="in-phase" min="80" max="110" step="1" value="90">
-                        <div class="limit-handle min-handle" data-for="in-phase" data-type="min"></div>
-                        <div class="limit-handle max-handle" data-for="in-phase" data-type="max"></div>
-                    </div>
-                    <div id="range-phase" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-phase" step="1" style="width:50px; font-size:10px; padding:1px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-phase" step="1" style="width:50px; font-size:10px; padding:1px;">
-                    </div>
-                </div>
-                <div class="control-group" title="Average distance from the water surface to the wing. Lower = Less Drag but Risk of Breach.">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Riding Depth: <span id="disp-height">0.20</span> m</label>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="range-toggle" data-target="range-height" style="cursor:pointer; font-size:9px; color:#3b82f6; font-weight:bold; user-select:none;" title="Set Optimization Limits">[LIMITS]</span>
-                            <label style="font-size:9px; cursor:pointer; color:#666; font-weight:bold;"><input type="checkbox" id="lock-height" style="margin:0 3px 0 0; vertical-align:middle;" checked> LOCK</label>
-                        </div>
-                    </div>
-                    <div class="slider-wrapper">
-                        <input type="range" id="in-height" min="0.10" max="0.80" step="0.01" value="0.20">
-                        <div class="limit-handle min-handle" data-for="in-height" data-type="min"></div>
-                        <div class="limit-handle max-handle" data-for="in-height" data-type="max"></div>
-                    </div>
-                    <div id="range-height" style="display:none; justify-content:space-between; gap:5px; margin-bottom:4px; background:#f1f5f9; padding:4px; border-radius:4px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MIN</label><input type="number" id="min-height" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                        <label style="font-size:9px; color:#666; align-self:center;">MAX</label><input type="number" id="max-height" step="0.01" style="width:50px; font-size:10px; padding:1px;">
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px; margin-bottom: 2px;">
-                <label style="font-size: 10px; font-weight: bold; color: #666;">OPTIMIZE FOR:</label>
-                <select id="opt-metric" style="font-size: 10px; padding: 2px; border: 1px solid #ccc; border-radius: 4px; background: white;">
-                    <option value="avg">AVG POWER</option>
-                    <option value="norm">NORMALIZED POWER</option>
-                </select>
-            </div>
-
-            <div class="tooltip" style="width: 100%; border-bottom: none;">
-                <button id="btn-optimize" style="width:100%; padding: 8px; margin-top: 5px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; color: #166534; transition: background 0.2s;">🎯 FIND SETTINGS MAGICALLY</button>
-                <span class="tooltip-text" style="width: 200px; text-align: center;">This might not result in the best absolute values wrt power efficiency (might be a local minimum)</span>
-            </div>
-            <div style="text-align: center; margin-top: 4px;">
-                <button id="btn-reset-limits" style="background:none; border:none; cursor: pointer; font-size: 9px; color: #94a3b8; font-weight: bold;">↺ RESET RANGES</button>
-            </div>
-
-            <!-- GROUP 3: CONFIGURATION -->
-            <div style="background-color: #fdf4ff; padding: 8px; border-radius: 6px; border: 1px solid #f0abfc; display: flex; flex-direction: column; gap: 8px;">
+            <div class="control-section control-section-step1">
+                <div class="step-label step-label-step1">Step 1: Set Your Gear</div>
                 <div class="control-group" title="Total weight of rider plus gear. Note: Changing mass requires re-optimization to see the true power cost (otherwise you just sink).">
                     <label>Rider Mass: <span id="disp-mass">70</span> kg</label>
                     <input type="range" id="in-mass" min="40" max="120" step="1" value="70">
@@ -631,8 +154,142 @@
                 </div>
             </div>
 
-            <!-- GROUP 4: SIMULATION -->
-            <div style="background-color: #f4f4f5; padding: 8px; border-radius: 6px; border: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 8px;">
+            <div class="control-section control-section-speed">
+                <div class="control-group" title="Forward velocity of the rider.">
+                    <label>Speed: <span id="disp-speed">17.0</span> km/h</label>
+                    <input type="range" id="in-speed" min="10.0" max="30.0" step="1.0" value="17.0">
+                </div>
+            </div>
+
+            <div class="control-section control-section-step2">
+                <div class="step-label step-label-step2">Step 2: Adjust the Pump</div>
+                <div class="control-group" title="Pumping cadence in cycles per second (Hz).">
+                    <div class="control-label-row">
+                        <label>Frequency: <span id="disp-freq">1.49</span> Hz <span class="label-muted">(<span id="disp-ppm">89</span> ppm)</span></label>
+                        <div class="control-actions">
+                            <span class="range-toggle" data-target="range-freq" title="Set Optimization Limits">[LIMITS]</span>
+                            <label class="lock-label"><input type="checkbox" id="lock-freq"> LOCK</label>
+                        </div>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-freq" min="0.01" max="2.5" step="0.01" value="1.49">
+                        <div class="limit-handle min-handle" data-for="in-freq" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-freq" data-type="max"></div>
+                    </div>
+                    <div id="range-freq" class="range-inputs">
+                        <label class="range-label">MIN</label><input type="number" id="min-freq" step="0.01" class="range-number-input">
+                        <label class="range-label">MAX</label><input type="number" id="max-freq" step="0.01" class="range-number-input">
+                    </div>
+                </div>
+                <div class="control-group" title="Vertical range of motion for the foil path.">
+                    <div class="control-label-row">
+                        <label>Amplitude: <span id="disp-amp">0.11</span> m</label>
+                        <div class="control-actions">
+                            <span class="range-toggle" data-target="range-amp" title="Set Optimization Limits">[LIMITS]</span>
+                            <label class="lock-label"><input type="checkbox" id="lock-amp"> LOCK</label>
+                        </div>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.11">
+                        <div class="limit-handle min-handle" data-for="in-amp" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-amp" data-type="max"></div>
+                    </div>
+                    <div id="range-amp" class="range-inputs">
+                        <label class="range-label">MIN</label><input type="number" id="min-amp" step="0.01" class="range-number-input">
+                        <label class="range-label">MAX</label><input type="number" id="max-amp" step="0.01" class="range-number-input">
+                    </div>
+                </div>
+                <div class="control-group" title="Controls the timing asymmetry. Positive values create a Quick Down / Slow Up rhythm.">
+                    <div class="control-label-row">
+                        <label>Asymmetry: <span id="disp-asym">0.00</span></label>
+                        <div class="control-actions">
+                            <span class="range-toggle" data-target="range-asym" title="Set Optimization Limits">[LIMITS]</span>
+                            <label class="lock-label"><input type="checkbox" id="lock-asym"> LOCK</label>
+                        </div>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-asym" min="0.0" max="0.8" step="0.01" value="0.0">
+                        <div class="limit-handle min-handle" data-for="in-asym" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-asym" data-type="max"></div>
+                    </div>
+                    <div id="range-asym" class="range-inputs">
+                        <label class="range-label">MIN</label><input type="number" id="min-asym" step="0.01" class="range-number-input">
+                        <label class="range-label">MAX</label><input type="number" id="max-asym" step="0.01" class="range-number-input">
+                    </div>
+                </div>
+                <div class="control-group" title="Base pitch angle of the front wing relative to the fuselage.">
+                    <div class="control-label-row">
+                        <label>Front Wing Pitch: <span id="disp-trim">4.9</span>°</label>
+                        <div class="control-actions">
+                            <span class="range-toggle" data-target="range-trim" title="Set Optimization Limits">[LIMITS]</span>
+                            <label class="lock-label"><input type="checkbox" id="lock-trim"> LOCK</label>
+                        </div>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-trim" min="-2.0" max="10.0" step="0.1" value="4.9">
+                        <div class="limit-handle min-handle" data-for="in-trim" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-trim" data-type="max"></div>
+                    </div>
+                    <div id="range-trim" class="range-inputs">
+                        <label class="range-label">MIN</label><input type="number" id="min-trim" step="0.1" class="range-number-input">
+                        <label class="range-label">MAX</label><input type="number" id="max-trim" step="0.1" class="range-number-input">
+                    </div>
+                </div>
+                <div class="control-group" title="Timing difference between heave and pitch. 90° is ideal (Pitch follows Velocity). Range: 80°-110°.">
+                    <div class="control-label-row">
+                        <label>Phase Shift: <span id="disp-phase">90</span>°</label>
+                        <div class="control-actions">
+                            <span class="range-toggle" data-target="range-phase" title="Set Optimization Limits">[LIMITS]</span>
+                            <label class="lock-label"><input type="checkbox" id="lock-phase" checked> LOCK</label>
+                        </div>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-phase" min="80" max="110" step="1" value="90">
+                        <div class="limit-handle min-handle" data-for="in-phase" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-phase" data-type="max"></div>
+                    </div>
+                    <div id="range-phase" class="range-inputs">
+                        <label class="range-label">MIN</label><input type="number" id="min-phase" step="1" class="range-number-input">
+                        <label class="range-label">MAX</label><input type="number" id="max-phase" step="1" class="range-number-input">
+                    </div>
+                </div>
+                <div class="control-group" title="Average distance from the water surface to the wing. Lower = Less Drag but Risk of Breach.">
+                    <div class="control-label-row">
+                        <label>Riding Depth: <span id="disp-height">0.20</span> m</label>
+                        <div class="control-actions">
+                            <span class="range-toggle" data-target="range-height" title="Set Optimization Limits">[LIMITS]</span>
+                            <label class="lock-label"><input type="checkbox" id="lock-height" checked> LOCK</label>
+                        </div>
+                    </div>
+                    <div class="slider-wrapper">
+                        <input type="range" id="in-height" min="0.10" max="0.80" step="0.01" value="0.20">
+                        <div class="limit-handle min-handle" data-for="in-height" data-type="min"></div>
+                        <div class="limit-handle max-handle" data-for="in-height" data-type="max"></div>
+                    </div>
+                    <div id="range-height" class="range-inputs">
+                        <label class="range-label">MIN</label><input type="number" id="min-height" step="0.01" class="range-number-input">
+                        <label class="range-label">MAX</label><input type="number" id="max-height" step="0.01" class="range-number-input">
+                    </div>
+                </div>
+            </div>
+
+            <div class="optimize-header">
+                <label class="optimize-label">OPTIMIZE FOR:</label>
+                <select id="opt-metric">
+                    <option value="avg">AVG POWER</option>
+                    <option value="norm">NORMALIZED POWER</option>
+                </select>
+            </div>
+
+            <div class="tooltip tooltip-full-width">
+                <button id="btn-optimize">🎯 FIND SETTINGS MAGICALLY</button>
+                <span class="tooltip-text tooltip-text-center">This might not result in the best absolute values wrt power efficiency (might be a local minimum)</span>
+            </div>
+            <div class="reset-limits-wrapper">
+                <button id="btn-reset-limits">↺ RESET RANGES</button>
+            </div>
+
+            <div class="control-section control-section-simulation">
                 <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
                     <label>Swing Weight: <span id="disp-swing">40</span>%</label>
                     <input type="range" id="in-swing" min="0.0" max="1.0" step="0.05" value="0.4">
@@ -646,21 +303,21 @@
                     <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
                 </div>
                 <div class="control-group" title="Toggle Hydrodynamic Added Mass (Virtual Mass of water moving with the wing).">
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="chk-added-mass" checked> Enable Added Mass</label>
+                    <label class="label-inline"><input type="checkbox" id="chk-added-mass" checked> Enable Added Mass</label>
                 </div>
             </div>
             
-            <div style="display: flex; gap: 8px; margin-top: 5px;">
-                <button id="btn-reset" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">RESET</button>
-                <button id="btn-replay" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; color: #475569; transition: background 0.2s;">REPLAY</button>
-                <button id="btn-tests" style="flex: 1; padding: 8px; cursor: pointer; font-size: 11px; font-weight: bold; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 6px; color: #0369a1; transition: background 0.2s;" title="Run Validation Suite (Check Console)">TESTS</button>
+            <div class="action-buttons-row">
+                <button id="btn-reset" class="action-button">RESET</button>
+                <button id="btn-replay" class="action-button">REPLAY</button>
+                <button id="btn-tests" class="action-button" title="Run Validation Suite (Check Console)">TESTS</button>
             </div>
 
-        </div> <!-- End controls -->
-        </div> <!-- End dashboard-row -->
+        </div>
+        </div>
 
-        <details id="readme-dropdown">
-            <summary>Documentation & About</summary>
+        <div id="doc-panel" class="doc-panel-hidden">
+            <button id="doc-close">×</button>
             <div class="readme-content">
                 <h2>How to Use the App</h2>
                 <p>This tool is a theoretical simulator designed to help you visualize and optimize the physics of pump foiling.</p>
@@ -817,7 +474,7 @@
                     The solver calculates forces based only on the current instant's velocity and angle. It ignores "unsteady aerodynamics" (Theodorsen effects/Wagner function), where the wake from the previous stroke affects the current lift. This is usually acceptable for low frequencies but becomes inaccurate above ~2-3 Hz.</li>
                 </ul>
             </div>
-        </details>
+        </div>
     </div>
 
 <script>
@@ -2804,7 +2461,7 @@ loop();
 document.querySelectorAll('.range-toggle').forEach(btn => {
     btn.addEventListener('click', () => {
         const t = document.getElementById(btn.dataset.target);
-        t.style.display = t.style.display === 'none' ? 'flex' : 'none';
+        t.classList.toggle('visible');
     });
 });
 
@@ -2935,6 +2592,15 @@ document.getElementById('btn-reset-limits').addEventListener('click', () => {
         document.getElementById('max-' + suffix).value = range.max;
         updateRangeVisual(id);
     }
+});
+
+document.getElementById('doc-toggle').addEventListener('click', () => {
+    const panel = document.getElementById('doc-panel');
+    panel.classList.toggle('doc-panel-hidden');
+});
+
+document.getElementById('doc-close').addEventListener('click', () => {
+    document.getElementById('doc-panel').classList.add('doc-panel-hidden');
 });
 
 </script>
