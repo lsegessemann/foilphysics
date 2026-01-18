@@ -1360,7 +1360,7 @@ function render(data) {
     // 3. Stickman Rider
     if (VISIBILITY.rider && VISIBILITY.assembly) {
         const fatness = CONFIG.mass / 80.0;
-        const limbWidth = 5 * fatness;
+        const limbWidth = 8 * fatness * fatness;
         const torsoWidth = 12 * fatness * fatness;
 
         // Color change for Power Phase
@@ -1404,7 +1404,45 @@ function render(data) {
 
         ctx.lineWidth = torsoWidth;
         ctx.beginPath(); ctx.moveTo(hipX, hipY); ctx.lineTo(shoulderX, shoulderY); ctx.stroke();
-        ctx.beginPath(); ctx.fillStyle='#eee'; ctx.lineWidth=2; ctx.arc(shoulderX, shoulderY - headRad, headRad, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        
+        // Neck
+        const neckLen = 0.09 * PPU;
+        const neckX = shoulderX + neckLen * sinT;
+        const neckY = shoulderY - neckLen * cosT;
+        const neckWidth = 7 * fatness * fatness;
+        ctx.lineWidth = neckWidth;
+        ctx.beginPath(); ctx.moveTo(shoulderX, shoulderY); ctx.lineTo(neckX, neckY); ctx.stroke();
+        
+        // Head
+        const headX = neckX;
+        const headY = neckY - headRad;
+        ctx.beginPath(); ctx.fillStyle='#eee'; ctx.lineWidth=2; ctx.arc(headX, headY, headRad, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        
+        // Face - Smiley
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        
+        // Eyes - shifted slightly to the right
+        const eyeY = headY - headRad * 0.30;
+        const eyeSpacing = headRad * 0.35;
+        const eyeSize = headRad * 0.1;
+        const faceOffsetX = headRad * 0.25;
+        ctx.beginPath();
+        ctx.arc(headX - eyeSpacing + faceOffsetX, eyeY, eyeSize, 0, Math.PI*2);
+        ctx.fillStyle = '#333';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(headX + eyeSpacing + faceOffsetX, eyeY, eyeSize, 0, Math.PI*2);
+        ctx.fill();
+        
+        // Smile - shifted slightly to the right
+        const smileY = headY + headRad * 0.1;
+        const smileWidth = headRad * 0.5;
+        const smileHeight = headRad * 0.25;
+        ctx.beginPath();
+        ctx.arc(headX + faceOffsetX, smileY, smileWidth, 0.2, Math.PI - 0.2, false);
+        ctx.stroke();
         
         // Arms
         const armLen = 0.55 * PPU;
@@ -1419,7 +1457,7 @@ function render(data) {
         const armDyLocal = armLen * Math.cos(armAngle); 
         const armDxLocal = armLen * 0.2 * Math.sin(armAngle); // Small lateral spread for "elbows out"
 
-        // Shoulders (Facing Screen -> Spread in World X)
+        // Shoulders (Facing Screen -> Spread in World X) - positioned at torso top
         const shoulderSpread = 0.12 * PPU; 
         const sDx = shoulderSpread * cosT;
         const sDy = shoulderSpread * sinT;
