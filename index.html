@@ -20,6 +20,7 @@
             <div id="ui-overlay">
                 <strong>Live Telemetry</strong><br>
                 Time: <span id="val-time">0.00</span> s<br>
+                Reynolds: <span id="val-re">0</span><br>
                 <hr>
                 Pitch (vs Horizon): <span id="val-pitch">0.0</span>°<br>
                 <span class="tooltip">AoA (vs Water flow)
@@ -90,6 +91,32 @@
                     <canvas id="graphPowerComp" width="1300" height="260"></canvas>
                 </div>
 
+                <div id="airfoil-controls-wrapper" style="display: flex; flex-wrap: wrap; gap: 10px; row-gap: 8px; justify-content: center; align-items: flex-end; padding: 8px 12px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 6px; margin-bottom: 10px;">
+                    <div class="control-group" title="Select a pre-defined NACA airfoil profile." style="margin-bottom: 0; min-width: auto;">
+                        <label style="margin-bottom: 2px;">Foil Section:</label>
+                        <select id="in-airfoil-select" style="width: 130px; font-size: 11px; padding: 2px;">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="control-group" title="Upload Custom Polar CSV" style="margin-bottom: 0; min-width: auto;">
+                        <label style="margin-bottom: 2px;">Polar: <span id="disp-polar-name" style="font-weight:normal; font-size: 0.9em; color:#666;">Default</span></label>
+                        <div style="display:flex; gap:4px; align-items: center;"><input type="file" id="in-polar-file" accept=".csv,.txt" style="font-size: 10px; width: 140px;"><button id="btn-clear-polar" style="font-size:10px; padding: 1px 5px; cursor:pointer; border:1px solid #cbd5e1; background:#fff; border-radius:3px;" title="Revert to default model">✕</button></div>
+                    </div>
+                    <div class="control-group" title="Upload Airfoil Shape DAT/TXT" style="margin-bottom: 0; min-width: auto;">
+                        <label style="margin-bottom: 2px;">Shape: <span id="disp-foil-name" style="font-weight:normal; font-size: 0.9em; color:#666;">NACA 0015</span></label>
+                        <div style="display:flex; gap:4px; align-items: center;"><input type="file" id="in-foil-file" accept=".dat,.txt" style="font-size: 10px; width: 140px;"><button id="btn-reset-foil" style="font-size:10px; padding: 1px 5px; cursor:pointer; border:1px solid #cbd5e1; background:#fff; border-radius:3px;" title="Revert to NACA 0015">✕</button></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; width: 100%;">
+                    <div class="canvas-wrapper" style="flex: 0 0 35%;">
+                        <canvas id="graphFoil" width="450" height="350"></canvas>
+                    </div>
+                    <div class="canvas-wrapper" style="flex: 1;">
+                        <canvas id="graphPolar" width="850" height="350"></canvas>
+                    </div>
+                </div>
+
                 <div id="presets-section">
                     <div class="control-group" title="Save and load configurations.">
                         <label>Presets</label>
@@ -129,10 +156,6 @@
                     <label>Wing AR: <span id="disp-ar">13.9</span></label>
                     <input type="range" id="in-ar" min="5.0" max="20.0" step="0.1" value="13.9">
                 </div>
-                <div class="control-group" title="Parasitic drag. Lower is more hydrodynamic (thinner mast/wing).">
-                    <label>Drag Coeff (Cd0): <span id="disp-cd0">0.013</span></label>
-                    <input type="range" id="in-cd0" min="0.010" max="0.035" step="0.001" value="0.013">
-                </div>
                 <div class="control-group" title="Surface area of the stabilizer.">
                     <label>Stab Area: <span id="disp-stab-area">120</span> cm²</label>
                     <input type="range" id="in-stab-area" min="0" max="500" step="10" value="120">
@@ -152,6 +175,10 @@
                 <div class="control-group" title="Where the rider stands relative to the Front Wing Lift. Positive = Forward (Nose Down).">
                     <label>Rider Offset: <span id="disp-offset">0.00</span> m</label>
                     <input type="range" id="in-offset" min="-0.20" max="0.30" step="0.01" value="0.0">
+                </div>
+                <div class="control-group" title="Water Temperature in Celsius. Colder water is more viscous (more drag).">
+                    <label>Water Temp: <span id="disp-temp">20</span>°C</label>
+                    <input type="range" id="in-temp" min="5" max="30" step="1" value="20">
                 </div>
             </div>
 
@@ -490,7 +517,7 @@ const CONFIG = {
     U: 17.0 / 3.6,       // Forward speed in m/s (converted from km/h)
     rho: 1000.0,         // Water density in kg/m³
     S: 0.135,            // Wing area in m² (e.g., 1350 cm² = 0.135 m²)
-    Cd0: 0.013,          // Parasitic Drag Coefficient (0.015=Pro, 0.02=Std, 0.03=Draggy)
+    Cd0: 0.008,          // Parasitic Drag Coefficient (NACA 0015 approx)
     k: 0.05,             // Induced Drag Factor (recalculated based on AR)
     g: 9.81,             // Gravity (m/s²)
     visual_size_m: 0.4,  // Visual scale for foil chord length
@@ -512,7 +539,11 @@ const CONFIG = {
     swing_weight_ratio: 0.4, // Percentage of body mass considered moving (legs + arms)
     elastic_efficiency: 1.0,  // Rider elastic efficiency
     asymmetry_factor: 0.0,
-    enable_added_mass: true // Toggle for Added Mass effect
+    enable_added_mass: true, // Toggle for Added Mass effect
+    water_temp: 20.0,    // Water temperature in Celsius
+    polar_data: null,    // Processed 3D polar { alpha_3d:[], cl:[], cd_profile:[] }
+    raw_polar_2d: null,   // Raw 2D polar from CSV
+    polar_name: null     // Name of the loaded polar
 };
 
 // --- VISIBILITY STATE ---
@@ -545,15 +576,60 @@ let state = {
 // --- NACA PROFILE ---
 function getNACA00xx(thickness, points) {
     const coords = [];
-    for (let i = 0; i <= points; i++) {
+    // Generate Upper Surface (TE -> LE)
+    for (let i = points; i >= 0; i--) {
         const beta = (i / points) * Math.PI;
         const x = (1 - Math.cos(beta)) / 2;
         const yt = 5 * thickness * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * Math.pow(x, 2) + 0.2843 * Math.pow(x, 3) - 0.1015 * Math.pow(x, 4));
         coords.push({x: x, y: yt});
     }
+    // Generate Lower Surface (LE -> TE)
+    for (let i = 1; i <= points; i++) {
+        const beta = (i / points) * Math.PI;
+        const x = (1 - Math.cos(beta)) / 2;
+        const yt = 5 * thickness * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * Math.pow(x, 2) + 0.2843 * Math.pow(x, 3) - 0.1015 * Math.pow(x, 4));
+        coords.push({x: x, y: -yt});
+    }
     return coords;
 }
-const foilShape = getNACA00xx(0.15, 40);
+let foilShape = getNACA00xx(0.15, 40);
+
+// --- POLAR PROCESSING ---
+function update3DPolar() {
+    if (!CONFIG.raw_polar_2d) {
+        CONFIG.polar_data = null;
+        document.getElementById('disp-polar-name').textContent = "Default (Analytical)";
+        drawPolarGraph();
+        return;
+    }
+    
+    // Convert 2D Polar to 3D based on current AR
+    // We map the 2D alpha to the required 3D geometric alpha: alpha_3d = alpha_2d + alpha_induced
+    // We keep Cd as profile drag, and add induced drag dynamically in the physics loop or here.
+    // To allow viscosity scaling on profile drag only, we store profile drag separately.
+    
+    const p2 = CONFIG.raw_polar_2d;
+    const p3 = { alpha_3d: [], cl: [], cd_profile: [] };
+    const AR = CONFIG.AR;
+    const rad2deg = 180 / Math.PI;
+    
+    for(let i=0; i<p2.alpha.length; i++) {
+        const cl = p2.cl[i];
+        const cd2 = p2.cd[i]; // Profile drag from 2D polar
+        const alpha2 = p2.alpha[i];
+        
+        const induced_angle_deg = (cl / (Math.PI * AR)) * rad2deg;
+        const alpha3 = alpha2 + induced_angle_deg;
+        
+        p3.alpha_3d.push(alpha3);
+        p3.cl.push(cl);
+        p3.cd_profile.push(cd2);
+    }
+    CONFIG.polar_data = p3;
+    const displayName = CONFIG.polar_name || "Custom";
+    document.getElementById('disp-polar-name').textContent = `${displayName} (AR ${CONFIG.AR.toFixed(1)})`;
+    drawPolarGraph();
+}
 
 // --- DOM ELEMENTS ---
 const canvas = document.getElementById('simCanvas');
@@ -575,6 +651,7 @@ const ui = {
     
     // Angle Displays
     pitch: document.getElementById('val-pitch'),
+    re: document.getElementById('val-re'),
     aoa: document.getElementById('val-aoa'),
     
     dispFreq: document.getElementById('disp-freq'),
@@ -587,7 +664,6 @@ const ui = {
     dispBoardMass: document.getElementById('disp-board-mass'),
     dispArea: document.getElementById('disp-area'),
     dispAr: document.getElementById('disp-ar'),
-    dispCd0: document.getElementById('disp-cd0'),
     dispTrim: document.getElementById('disp-trim'),
     dispPhase: document.getElementById('disp-phase'),
     dispSwing: document.getElementById('disp-swing'),
@@ -597,7 +673,8 @@ const ui = {
     dispStabAr: document.getElementById('disp-stab-ar'),
     dispFuseLen: document.getElementById('disp-fuse-len'),
     dispOffset: document.getElementById('disp-offset'),
-    dispHeight: document.getElementById('disp-height')
+    dispHeight: document.getElementById('disp-height'),
+    dispTemp: document.getElementById('disp-temp')
 };
 
 // --- PHYSICS ENGINE ---
@@ -649,28 +726,72 @@ function calculatePhysics(t) {
     const alpha = theta - gamma;
     const v_sq = vx*vx + vz*vz;
     
-    // --- STALL MODEL (Replaces simple linear calc) ---
+    // --- VISCOSITY CORRECTION ---
+    // Kinematic Viscosity of water (m^2/s) approx fit
+    const T = CONFIG.water_temp;
+    const nu = 1.793e-6 / (1 + 0.03368 * T + 0.000221 * T * T);
+    const nu_20 = 1.004e-6; // Reference at 20C
+    // Turbulent skin friction scaling factor ~ (nu/nu_ref)^0.2
+    const visc_factor = Math.pow(nu / nu_20, 0.2);
+
+    // --- LIFT & DRAG CALCULATION ---
     const stall_angle_deg = 13.0;
     const stall_rad = stall_angle_deg * (Math.PI / 180);
     const alpha_abs = Math.abs(alpha);
-    const sign = Math.sign(alpha);
-
-    // Base Lift Slope
-    const lift_slope = (2 * Math.PI) / (1 + 2 / CONFIG.AR);
+    const alpha_deg = alpha * (180 / Math.PI);
     
     let Cl, Cd_profile;
+    let isStalled = false;
 
-    if (alpha_abs < stall_rad) {
-        // Linear Region
-        Cl = lift_slope * alpha;
-        const k = 1 / (Math.PI * CONFIG.AR);
-        Cd_profile = CONFIG.Cd0 + k * (Cl * Cl);
+    if (CONFIG.polar_data) {
+        // --- CUSTOM POLAR LOOKUP ---
+        const p = CONFIG.polar_data;
+        // Linear Interpolation on alpha_3d
+        let idx = 0;
+        // Assume sorted alpha
+        if (alpha_deg <= p.alpha_3d[0]) {
+            idx = 0;
+        } else if (alpha_deg >= p.alpha_3d[p.alpha_3d.length - 1]) {
+            idx = p.alpha_3d.length - 2;
+        } else {
+            // Simple scan
+            for (let i = 0; i < p.alpha_3d.length - 1; i++) {
+                if (alpha_deg >= p.alpha_3d[i] && alpha_deg < p.alpha_3d[i+1]) {
+                    idx = i;
+                    break;
+                }
+            }
+        }
+        
+        const t_interp = (alpha_deg - p.alpha_3d[idx]) / (p.alpha_3d[idx+1] - p.alpha_3d[idx]);
+        Cl = p.cl[idx] + t_interp * (p.cl[idx+1] - p.cl[idx]);
+        const Cd_prof_raw = p.cd_profile[idx] + t_interp * (p.cd_profile[idx+1] - p.cd_profile[idx]);
+        
+        // Add Induced Drag & Apply Viscosity to Profile Drag
+        const Cd_induced = (Cl * Cl) / (Math.PI * CONFIG.AR);
+        Cd_profile = (Cd_prof_raw * visc_factor) + Cd_induced;
+        
+        if (alpha_abs > 15 * (Math.PI/180)) isStalled = true; 
+
     } else {
-        // Stall Region
-        const max_Cl = lift_slope * stall_rad;
-        Cl = max_Cl * sign; 
-        const excess_rad = alpha_abs - stall_rad;
-        Cd_profile = 0.05 + (excess_rad * 2.0); 
+        // --- ANALYTICAL MODEL ---
+        const lift_slope = (2 * Math.PI) / (1 + 2 / CONFIG.AR);
+        
+        if (alpha_abs < stall_rad) {
+            // Linear Region
+            Cl = lift_slope * alpha;
+            const k = 1 / (Math.PI * CONFIG.AR);
+            // Apply viscosity factor to the parasitic term (Cd0)
+            Cd_profile = (CONFIG.Cd0 * visc_factor) + k * (Cl * Cl);
+        } else {
+            // Stall Region
+            isStalled = true;
+            const sign = Math.sign(alpha);
+            const max_Cl = lift_slope * stall_rad;
+            Cl = max_Cl * sign; 
+            const excess_rad = alpha_abs - stall_rad;
+            Cd_profile = 0.05 + (excess_rad * 2.0); 
+        }
     }
     
     const L_mag = 0.5 * CONFIG.rho * CONFIG.S * Cl * v_sq;
@@ -748,6 +869,9 @@ function calculatePhysics(t) {
     const m_33 = CONFIG.rho * Math.PI * Math.pow(chord / 2, 2) * span;
     const added_mass = CONFIG.enable_added_mass ? (m_33 * Math.pow(Math.cos(theta), 2)) : 0;
 
+    // Reynolds Number
+    const Re = (Math.sqrt(v_sq) * chord) / nu;
+
     // F_inertia_moving: Force needed to accelerate Board + Legs
     const F_inertia_moving = m_moving * (CONFIG.g + az);
 
@@ -822,8 +946,9 @@ function calculatePhysics(t) {
         rawPower: rawLegPower,
         L_stab_x, L_stab_z, D_stab_x, D_stab_z,
         rotPower: rotPower,
-        isStalled: alpha_abs >= stall_rad,
-        F_hydro_z, F_hydro_x
+        isStalled: isStalled,
+        F_hydro_z, F_hydro_x, Re,
+        Cl, Cd: Cd_profile
     };
 }
  
@@ -1143,6 +1268,235 @@ function drawSustainabilityGauge(ctx, avgThrust, maxThrustRef) {
     ctx.fillText(avgThrust.toFixed(0) + ' N', centerX, margin + gaugeH - 2);
 }
 
+function drawAirfoilShape() {
+    const canvas = document.getElementById('graphFoil');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const scale = h / 300; 
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    
+    ctx.save();
+    const shapeW = w * 0.85;
+    const shapeX = w * 0.075;
+    const chordY = h / 2;
+    
+    ctx.fillStyle = "#333";
+    ctx.font = (14 * scale) + "px sans-serif";
+    const foilName = document.getElementById('disp-foil-name').textContent;
+    ctx.fillText(`Visual Profile (${foilName})`, 10 * scale, 30 * scale);
+    
+    ctx.beginPath();
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    for(let i=0; i<foilShape.length; i++) {
+        const px = shapeX + foilShape[i].x * shapeW;
+        const py = chordY - foilShape[i].y * shapeW; 
+        if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = "#ddd";
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawPolarGraph(currentPoint) {
+    const canvas = document.getElementById('graphPolar');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const scale = h / 360; 
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    // Reset text alignment
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    
+    // --- 2. Draw Polar Curves ---
+    const graphX = 60 * scale;
+    const graphY = 30 * scale;
+    const graphW = w - 130 * scale;
+    const graphH = h - 70 * scale;
+    
+    // Generate Data Points
+    const dataPoints = [];
+    const minAlpha = -5, maxAlpha = 20, step = 0.5;
+    
+    // Helper to calculate physics-like coefficients
+    const getCoeffs = (alphaDeg) => {
+        // Re-use physics logic (simplified)
+        const alphaRad = alphaDeg * Math.PI / 180;
+        const T = CONFIG.water_temp;
+        const nu = 1.793e-6 / (1 + 0.03368 * T + 0.000221 * T * T);
+        const visc_factor = Math.pow(nu / 1.004e-6, 0.2);
+
+        if (CONFIG.polar_data) {
+            const p = CONFIG.polar_data;
+            let idx = 0;
+            if (alphaDeg <= p.alpha_3d[0]) idx = 0;
+            else if (alphaDeg >= p.alpha_3d[p.alpha_3d.length-1]) idx = p.alpha_3d.length - 2;
+            else { for(let i=0; i<p.alpha_3d.length-1; i++) { if (alphaDeg >= p.alpha_3d[i] && alphaDeg < p.alpha_3d[i+1]) { idx = i; break; } } }
+            const t = (alphaDeg - p.alpha_3d[idx]) / (p.alpha_3d[idx+1] - p.alpha_3d[idx] || 1);
+            const cl = p.cl[idx] + t * (p.cl[idx+1] - p.cl[idx]);
+            const cd_prof = p.cd_profile[idx] + t * (p.cd_profile[idx+1] - p.cd_profile[idx]);
+            return { cl, cd: (cd_prof * visc_factor) + (cl*cl)/(Math.PI * CONFIG.AR) };
+        } else {
+            const stall_rad = 13.0 * Math.PI/180;
+            const lift_slope = (2 * Math.PI) / (1 + 2 / CONFIG.AR);
+            let cl, cd_prof;
+            if (Math.abs(alphaRad) < stall_rad) {
+                cl = lift_slope * alphaRad;
+                cd_prof = (CONFIG.Cd0 * visc_factor) + (cl*cl)/(Math.PI * CONFIG.AR);
+            } else {
+                cl = lift_slope * stall_rad * Math.sign(alphaRad);
+                cd_prof = 0.05 + (Math.abs(alphaRad) - stall_rad) * 2.0;
+            }
+            return { cl, cd: cd_prof };
+        }
+    };
+    
+    for(let a = minAlpha; a <= maxAlpha; a += step) dataPoints.push({ a, ...getCoeffs(a) });
+    
+    const mapX = (a) => graphX + ((a - minAlpha) / (maxAlpha - minAlpha)) * graphW;
+    const mapY_Cl = (cl) => graphY + graphH - ((cl + 0.5) / 2.0) * graphH; // Range -0.5 to 1.5
+    const mapY_Cd = (cd) => graphY + graphH - (cd / 0.2) * graphH; // Range 0 to 0.2
+    
+    // Background & Grid
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(graphX, graphY, graphW, graphH);
+    ctx.strokeStyle = "#ccc";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(graphX, graphY, graphW, graphH);
+
+    // --- Add Axis Labels and Gridlines ---
+    ctx.fillStyle = "#666";
+    ctx.font = (12 * scale) + "px sans-serif";
+    ctx.strokeStyle = '#eee';
+    ctx.lineWidth = 1;
+
+    // X-Axis (Alpha)
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    for (let a = minAlpha; a <= maxAlpha; a += 5) {
+        const x = mapX(a);
+        ctx.fillText(a.toString(), x, graphY + graphH + 5 * scale);
+        ctx.beginPath();
+        ctx.moveTo(x, graphY);
+        ctx.lineTo(x, graphY + graphH);
+        ctx.stroke();
+    }
+    ctx.fillText("Alpha (deg)", graphX + graphW / 2, graphY + graphH + 20 * scale);
+
+    // Y-Axis (Cl - Left)
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let cl = -0.5; cl <= 1.5; cl += 0.5) {
+        const y = mapY_Cl(cl);
+        ctx.fillText(cl.toFixed(1), graphX - 8 * scale, y);
+        ctx.beginPath();
+        ctx.moveTo(graphX, y);
+        ctx.lineTo(graphX + graphW, y);
+        ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(graphX - 45 * scale, graphY + graphH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("Cl (Lift Coefficient)", 0, 0);
+    ctx.restore();
+
+
+    // Y-Axis (Cd - Right)
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    for (let cd = 0; cd <= 0.2; cd += 0.05) {
+        const y = mapY_Cd(cd);
+        ctx.fillText(cd.toFixed(2), graphX + graphW + 8 * scale, y);
+        // No need to redraw horizontal grid lines
+    }
+    ctx.save();
+    ctx.translate(graphX + graphW + 50 * scale, graphY + graphH / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("Cd (Drag Coefficient)", 0, 0);
+    ctx.restore();
+
+
+    // Draw Cl (Blue)
+    ctx.beginPath(); ctx.strokeStyle = "blue"; ctx.lineWidth = 2;
+    for(let i=0; i<dataPoints.length; i++) { const x = mapX(dataPoints[i].a), y = mapY_Cl(dataPoints[i].cl); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    ctx.stroke();
+    // Draw Cd (Red)
+    ctx.beginPath(); ctx.strokeStyle = "red"; ctx.lineWidth = 2;
+    for(let i=0; i<dataPoints.length; i++) { const x = mapX(dataPoints[i].a), y = mapY_Cd(dataPoints[i].cd); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    ctx.stroke();
+    
+    // Legend
+    ctx.fillStyle = "blue";
+    ctx.fillRect(graphX + 10 * scale, graphY + 10 * scale, 10 * scale, 10 * scale);
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Cl", graphX + 25 * scale, graphY + 15 * scale);
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(graphX + 10 * scale, graphY + 30 * scale, 10 * scale, 10 * scale);
+    ctx.fillStyle = "#333";
+    ctx.fillText("Cd", graphX + 25 * scale, graphY + 35 * scale);
+
+    // --- 3. Draw Current Operating Point ---
+    if (currentPoint) {
+        const { alpha, cl, cd } = currentPoint;
+        // Check bounds to avoid drawing outside
+        if (alpha >= minAlpha && alpha <= maxAlpha) {
+            const px = mapX(alpha);
+            const pyCl = mapY_Cl(cl);
+            const pyCd = mapY_Cd(cd);
+
+            // Draw vertical line at Alpha
+            ctx.save();
+            ctx.setLineDash([2, 2]);
+            ctx.strokeStyle = "#aaa";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(px, graphY);
+            ctx.lineTo(px, graphY + graphH);
+            ctx.stroke();
+
+            // Draw Cl Point
+            ctx.fillStyle = "blue";
+            ctx.beginPath();
+            ctx.arc(px, pyCl, 4 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw Cd Point
+            ctx.fillStyle = "red";
+            ctx.beginPath();
+            ctx.arc(px, pyCd, 4 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Real-time values
+            ctx.font = "bold " + (12 * scale) + "px monospace";
+            ctx.textAlign = "left";
+            ctx.fillStyle = "#333";
+            ctx.fillText(`α: ${alpha.toFixed(1)}°`, graphX + 10*scale, graphY + 55*scale);
+            ctx.fillStyle = "blue";
+            ctx.fillText(`Cl: ${cl.toFixed(2)}`, graphX + 10*scale, graphY + 70*scale);
+            ctx.fillStyle = "red";
+            ctx.fillText(`Cd: ${cd.toFixed(3)}`, graphX + 10*scale, graphY + 85*scale);
+            
+            ctx.restore();
+        }
+    }
+}
 
 // --- UPDATE & RENDER ---
 function updatePhysicsState(dtOverride) {
@@ -1268,6 +1622,7 @@ function render(data) {
     // UI
     ui.time.textContent = state.t.toFixed(2);
     
+    ui.re.textContent = phys.Re.toFixed(0);
     // Update New Angle Displays
     ui.pitch.textContent = (phys.theta * 180 / Math.PI).toFixed(1);
     ui.aoa.textContent = (phys.alpha * 180 / Math.PI).toFixed(1);
@@ -1498,9 +1853,11 @@ function render(data) {
     const chordPx = CONFIG.visual_size_m * PPU;
     const toLocalX = (nx) => (0.25 - nx) * chordPx; 
     ctx.beginPath(); ctx.fillStyle = 'black';
-    ctx.moveTo(toLocalX(foilShape[0].x), -foilShape[0].y * chordPx);
-    for (let i = 1; i < foilShape.length; i++) ctx.lineTo(toLocalX(foilShape[i].x), -foilShape[i].y * chordPx);
-    for (let i = foilShape.length - 1; i >= 0; i--) ctx.lineTo(toLocalX(foilShape[i].x), foilShape[i].y * chordPx);
+    // Draw full polygon loop
+    if (foilShape.length > 0) {
+        ctx.moveTo(toLocalX(foilShape[0].x), -foilShape[0].y * chordPx);
+        for (let i = 1; i < foilShape.length; i++) ctx.lineTo(toLocalX(foilShape[i].x), -foilShape[i].y * chordPx);
+    }
     ctx.fill(); ctx.restore();
 
     // Vectors
@@ -1609,7 +1966,128 @@ function render(data) {
         gStatusEl.style.color = '#1b5e20';
         gStatusEl.textContent = `Avg Rider G-Force: OK (${gRatio.toFixed(2)} G)`;
     }
+
+    // Update Polar Graph with current point
+    drawPolarGraph({ 
+        alpha: phys.alpha * (180 / Math.PI), 
+        cl: phys.Cl, 
+        cd: phys.Cd 
+    });
 }
+
+// --- AIRFOIL PRESETS ---
+const symmetric_airfoils = ["naca0008", "naca0010", "naca0015", "naca0018", "naca0021", "naca0024"];
+const asymmetric_airfoils = ["naca1408", "naca1412", "naca2408", "naca2410", "naca2411", "naca2412", "naca2415", "naca2424", "naca4412", "naca4415", "naca4418", "naca4421", "naca4424", "naca6412"];
+
+const airfoilSelect = document.getElementById('in-airfoil-select');
+
+const all_airfoils = [...symmetric_airfoils, ...asymmetric_airfoils];
+all_airfoils.forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name.toUpperCase();
+    airfoilSelect.appendChild(option);
+});
+
+function loadPresetAirfoil(foilName) {
+    if (!foilName) return;
+    let geomPath, polarPath;
+    if (symmetric_airfoils.includes(foilName)) {
+        geomPath = `naca_data/symmetric/geometry/${foilName}_geom.txt`;
+        polarPath = `naca_data/symmetric/polar_data/${foilName}_re500000.csv`;
+    } else if (asymmetric_airfoils.includes(foilName)) {
+        geomPath = `naca_data/asymmetric/geometry/${foilName}_geom.txt`;
+        polarPath = `naca_data/asymmetric/polar_data/${foilName}_re500000.csv`;
+    }
+
+    if (geomPath) {
+        fetch(geomPath)
+            .then(response => response.text())
+            .then(text => {
+                const lines = text.split(/\r?\n/);
+                const newShape = [];
+                let name = foilName;
+                
+                for(let line of lines) {
+                    line = line.trim();
+                    if(!line) continue;
+                    if (isNaN(parseFloat(line[0])) && line[0] !== '-' && line[0] !== '.') {
+                        if (newShape.length === 0) name = line;
+                        continue;
+                    }
+                    const parts = line.split(/[\s,]+/).filter(x => x !== "");
+                    if (parts.length >= 2) {
+                        const x = parseFloat(parts[0]);
+                        const y = parseFloat(parts[1]);
+                        if (!isNaN(x) && !isNaN(y)) newShape.push({x, y});
+                    }
+                }
+                if (newShape.length > 10) {
+                    foilShape = newShape;
+                    document.getElementById('disp-foil-name').textContent = name.substring(0, 20);
+                    drawAirfoilShape();
+                } else { console.error("Could not parse airfoil coordinates."); }
+            });
+    }
+
+    if (polarPath) {
+        fetch(polarPath)
+            .then(response => {
+                if (!response.ok) {
+                    // If the specific Re polar doesn't exist, fall back to no polar
+                    console.warn(`Polar data not found for ${foilName} at Re500000. Using analytical model.`);
+                    CONFIG.raw_polar_2d = null;
+                    update3DPolar();
+                    return null;
+                }
+                return response.text();
+            })
+            .then(text => {
+                if (text === null) return;
+                const lines = text.split(/\r?\n/);
+                const alpha = [], cl = [], cd = [];
+                
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line || isNaN(line[0]) && line[0] !== '-') return;
+                    const parts = line.split(/[\s,]+/).filter(x => x !== "");
+                    if (parts.length >= 3) {
+                        const a = parseFloat(parts[0]);
+                        const l = parseFloat(parts[1]);
+                        const d = parseFloat(parts[2]);
+                        if (!isNaN(a) && !isNaN(l) && !isNaN(d)) {
+                            alpha.push(a);
+                            cl.push(l);
+                            cd.push(d);
+                        }
+                    }
+                });
+                
+                if (alpha.length > 2) {
+                    const combined = alpha.map((a, i) => ({a, l: cl[i], d: cd[i]}));
+                    combined.sort((a, b) => a.a - b.a);
+                    CONFIG.raw_polar_2d = {
+                        alpha: combined.map(x => x.a),
+                        cl: combined.map(x => x.l),
+                        cd: combined.map(x => x.d)
+                    };
+                    CONFIG.polar_name = foilName;
+                    update3DPolar();
+                } else {
+                    console.error("Could not parse polar data.");
+                }
+            });
+    }
+}
+
+airfoilSelect.addEventListener('change', (e) => {
+    loadPresetAirfoil(e.target.value);
+});
+
+// Load default NACA 0015 on startup
+airfoilSelect.value = "naca0015";
+loadPresetAirfoil("naca0015");
+
 
 // --- LISTENERS ---
 document.getElementById('in-freq').addEventListener('input', (e) => { state.freq = parseFloat(e.target.value); ui.dispFreq.textContent = state.freq.toFixed(2); ui.dispPpm.textContent = (state.freq * 60).toFixed(0); });
@@ -1629,8 +2107,7 @@ document.getElementById('in-speed').addEventListener('input', (e) => { const kph
 document.getElementById('in-mass').addEventListener('input', (e) => { CONFIG.mass = parseFloat(e.target.value); ui.dispMass.textContent = CONFIG.mass.toFixed(0); });
 document.getElementById('in-board-mass').addEventListener('input', (e) => { CONFIG.board_mass = parseFloat(e.target.value); ui.dispBoardMass.textContent = CONFIG.board_mass.toFixed(1); });
 document.getElementById('in-area').addEventListener('input', (e) => { const cm2 = parseFloat(e.target.value); CONFIG.S = cm2 / 10000; ui.dispArea.textContent = cm2.toFixed(0); });
-document.getElementById('in-ar').addEventListener('input', (e) => { CONFIG.AR = parseFloat(e.target.value); ui.dispAr.textContent = CONFIG.AR.toFixed(1); });
-document.getElementById('in-cd0').addEventListener('input', (e) => { CONFIG.Cd0 = parseFloat(e.target.value); ui.dispCd0.textContent = CONFIG.Cd0.toFixed(3); });
+document.getElementById('in-ar').addEventListener('input', (e) => { CONFIG.AR = parseFloat(e.target.value); ui.dispAr.textContent = CONFIG.AR.toFixed(1); update3DPolar(); });
 document.getElementById('in-trim').addEventListener('input', (e) => { CONFIG.pitch_trim_deg = parseFloat(e.target.value); ui.dispTrim.textContent = CONFIG.pitch_trim_deg.toFixed(1); });
 document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.phase_shift_deg = parseFloat(e.target.value); ui.dispPhase.textContent = CONFIG.phase_shift_deg.toFixed(0); });
 document.getElementById('in-swing').addEventListener('input', (e) => { CONFIG.swing_weight_ratio = parseFloat(e.target.value); ui.dispSwing.textContent = (CONFIG.swing_weight_ratio * 100).toFixed(0); });
@@ -1652,6 +2129,95 @@ document.getElementById('in-height').addEventListener('input', (e) => {
     CONFIG.riding_depth = val; 
     ui.dispHeight.textContent = CONFIG.riding_depth.toFixed(2); 
 });
+document.getElementById('in-temp').addEventListener('input', (e) => { CONFIG.water_temp = parseFloat(e.target.value); ui.dispTemp.textContent = CONFIG.water_temp.toFixed(0); drawPolarGraph(); });
+
+// Polar File Upload
+document.getElementById('in-polar-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/);
+        const alpha = [], cl = [], cd = [];
+        
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line || isNaN(line[0]) && line[0] !== '-') return; // Skip headers/empty
+            // Split by comma or whitespace
+            const parts = line.split(/[\s,]+/).filter(x => x !== "");
+            if (parts.length >= 3) {
+                const a = parseFloat(parts[0]);
+                const l = parseFloat(parts[1]);
+                const d = parseFloat(parts[2]);
+                if (!isNaN(a) && !isNaN(l) && !isNaN(d)) {
+                    alpha.push(a);
+                    cl.push(l);
+                    cd.push(d);
+                }
+            }
+        });
+        
+        if (alpha.length > 2) {
+            // Sort by alpha just in case
+            // Create objects, sort, unpack
+            const combined = alpha.map((a, i) => ({a, l: cl[i], d: cd[i]}));
+            combined.sort((a, b) => a.a - b.a);
+            CONFIG.raw_polar_2d = {
+                alpha: combined.map(x => x.a),
+                cl: combined.map(x => x.l),
+                cd: combined.map(x => x.d)
+            };
+            update3DPolar();
+        } else {
+            alert("Could not parse polar data. Ensure CSV format: Alpha, Cl, Cd");
+        }
+    };
+    reader.readAsText(file);
+});
+document.getElementById('btn-clear-polar').addEventListener('click', () => {
+    CONFIG.raw_polar_2d = null;
+    CONFIG.polar_name = null;
+    update3DPolar();
+    document.getElementById('in-polar-file').value = "";
+    document.getElementById('in-airfoil-select').value = "";
+});
+// Foil Shape File Upload
+document.getElementById('in-foil-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/);
+        const newShape = [];
+        let name = file.name.replace(/\.[^/.]+$/, ""); // Default to filename
+        
+        for(let line of lines) {
+            line = line.trim();
+            if(!line) continue;
+            // Check if header (starts with non-digit/minus/dot)
+            if (isNaN(parseFloat(line[0])) && line[0] !== '-' && line[0] !== '.') {
+                if (newShape.length === 0) name = line; // Assume first text line is name
+                continue;
+            }
+            const parts = line.split(/[\s,]+/).filter(x => x !== "");
+            if (parts.length >= 2) {
+                const x = parseFloat(parts[0]);
+                const y = parseFloat(parts[1]);
+                if (!isNaN(x) && !isNaN(y)) newShape.push({x, y});
+            }
+        }
+        if (newShape.length > 10) {
+            foilShape = newShape;
+            document.getElementById('disp-foil-name').textContent = name.substring(0, 20);
+            drawAirfoilShape();
+            if (state.paused) render(updatePhysicsState(0));
+        } else { alert("Could not parse airfoil coordinates."); }
+    };
+    reader.readAsText(file);
+});
+document.getElementById('btn-reset-foil').addEventListener('click', () => { foilShape = getNACA00xx(0.15, 40); document.getElementById('disp-foil-name').textContent = "NACA 0015"; document.getElementById('in-foil-file').value = ""; drawAirfoilShape(); if (state.paused) render(updatePhysicsState(0)); });
 
 document.getElementById('btn-optimize').addEventListener('click', () => {
     const btn = document.getElementById('btn-optimize');
@@ -1889,7 +2455,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     CONFIG.board_mass = 6.0; document.getElementById('in-board-mass').value = 6.0; ui.dispBoardMass.textContent = "6.0";
     CONFIG.S = 0.135; document.getElementById('in-area').value = 1350; ui.dispArea.textContent = "1350";
     CONFIG.AR = 13.9; document.getElementById('in-ar').value = 13.9; ui.dispAr.textContent = "13.9";
-    CONFIG.Cd0 = 0.013; document.getElementById('in-cd0').value = 0.013; ui.dispCd0.textContent = "0.013";
+    CONFIG.Cd0 = 0.008;
     CONFIG.pitch_trim_deg = 4.9; document.getElementById('in-trim').value = 4.9; ui.dispTrim.textContent = "4.9";
     CONFIG.phase_shift_deg = 90.0; document.getElementById('in-phase').value = 90; ui.dispPhase.textContent = "90";
     document.getElementById('lock-phase').checked = true;
@@ -2021,7 +2587,7 @@ const PRESET_KEY = 'foil_sim_presets';
 const DEFAULT_PRESETS = {
     "Standard (80kg)": {
         speed: 17.0, freq: 1.13, amp: 0.18, asym: 0.08, trim: 4.6, phase: 90, height: 0.20,
-        mass: 80, boardMass: 6.0, area: 1400, ar: 13.9, cd0: 0.013,
+        mass: 80, boardMass: 6.0, area: 1400, ar: 13.9, cd0: 0.008,
         stabArea: 120, stabAr: 8.0, stabAngle: -1.0, fuseLen: 0.60, offset: 0.0,
         swing: 0.4, elastic: 0, size: 0.4
     },
@@ -2034,7 +2600,7 @@ const DEFAULT_PRESETS = {
    
     "@foilien": {
         speed: 17.0, freq: 1.12, amp: 0.18, asym: 0.16, trim: 4.5, phase: 90, height: 0.20,
-        mass: 80, boardMass: 5.5, area: 1300, ar: 13.9, cd0: 0.013,
+        mass: 80, boardMass: 5.5, area: 1300, ar: 13.9, cd0: 0.008,
         stabArea: 120, stabAr: 8.0, stabAngle: -1.0, fuseLen: 0.60, offset: 0.0,
         swing: 0.4, elastic: 0, size: 0.4
     }
@@ -2089,7 +2655,7 @@ function captureCurrentState() {
         boardMass: parseFloat(document.getElementById('in-board-mass').value),
         area: parseFloat(document.getElementById('in-area').value),
         ar: parseFloat(document.getElementById('in-ar').value),
-        cd0: parseFloat(document.getElementById('in-cd0').value),
+        cd0: CONFIG.Cd0,
         stabArea: parseFloat(document.getElementById('in-stab-area').value),
         stabAr: parseFloat(document.getElementById('in-stab-ar').value),
         stabAngle: parseFloat(document.getElementById('in-stab-angle').value),
@@ -2114,7 +2680,6 @@ function applyPresetState(p) {
     document.getElementById('in-board-mass').value = p.boardMass || 6.0;
     document.getElementById('in-area').value = p.area;
     document.getElementById('in-ar').value = p.ar;
-    document.getElementById('in-cd0').value = p.cd0;
     document.getElementById('in-stab-area').value = p.stabArea;
     document.getElementById('in-stab-ar').value = p.stabAr;
     document.getElementById('in-stab-angle').value = p.stabAngle;
@@ -2159,7 +2724,6 @@ function applyPresetState(p) {
     ui.dispBoardMass.textContent = (p.boardMass || 6.0).toFixed(1);
     ui.dispArea.textContent = p.area.toFixed(0);
     ui.dispAr.textContent = p.ar.toFixed(1);
-    ui.dispCd0.textContent = p.cd0.toFixed(3);
     ui.dispStabArea.textContent = p.stabArea.toFixed(0);
     ui.dispStabAr.textContent = p.stabAr.toFixed(1);
     ui.dispStabAngle.textContent = p.stabAngle.toFixed(1);
@@ -2264,7 +2828,7 @@ document.getElementById('btn-tests').addEventListener('click', () => {
     // ==========================================
     function resetSim() {
         CONFIG.mass = 70; CONFIG.board_mass = 6.0; CONFIG.g = 9.81; CONFIG.rho = 1000; CONFIG.S = 0.135; 
-        CONFIG.Cd0 = 0.013; CONFIG.AR = 13.9; CONFIG.U = 5.55; 
+        CONFIG.Cd0 = 0.008; CONFIG.AR = 13.9; CONFIG.U = 5.55; 
         
         // State Resets
         state.freq = 0; 
@@ -2277,6 +2841,11 @@ document.getElementById('btn-tests').addEventListener('click', () => {
         CONFIG.elastic_efficiency = 1.0;
         
         CONFIG.stab_angle = 0; CONFIG.S_stab = 0; CONFIG.fuselage_len = 0.7; CONFIG.riding_depth = 0.2;
+
+        // Force Analytical Model for Tests
+        CONFIG.polar_data = null;
+        CONFIG.raw_polar_2d = null;
+        CONFIG.polar_name = null;
     }
 
     function assert(testName, actual, expected, tolerance = 0.01) {
@@ -2494,6 +3063,8 @@ document.getElementById('btn-tests').addEventListener('click', () => {
 renderPresetDropdown();
 
 render({ phys: calculatePhysics(0), normPower: 0, avgPower: 0, avgThrust: 0, avgLift: 0, avgGForce: 0 });
+drawAirfoilShape();
+drawPolarGraph();
 loop();
 
 // --- RANGE CONTROLS SETUP ---

@@ -1,0 +1,102 @@
+import os
+import requests
+import time
+import pandas as pd
+import matplotlib.pyplot as plt
+import io
+
+# --- Configuration ---
+REYNOLDS_NUMBER = "500000"
+BASE_URL_GEO = "http://airfoiltools.com/airfoil/seligdatfile?airfoil=naca{}-il"
+# URL pattern for Re=500k polars (ncrit=9 is standard)
+BASE_URL_POLAR = "http://airfoiltools.com/polar/csv?polar=xf-naca{}-il-" + REYNOLDS_NUMBER
+
+# --- Airfoil Lists ---
+symmetric_naca = [
+    "0006", "0008", "0009", "0010", "0011", "0012", "0013", "0014", "0015", "0016",
+    "0017", "0018", "0019", "0020", "0021", "0022", "0023", "0024", "0025", "0030"
+]
+
+asymmetric_naca = [
+    "2412", "2414", "2415", "2424", "4412", "4415", "4424", "6409", "6412", "1408",
+    "1412", "2408", "2410", "2411", "4418", "4421", "6408", "6410", "8318", "9412"
+]
+
+def fetch_and_plot(naca_id, category):
+    # Setup folders
+    base_dir = f"naca_data/{category}"
+    os.makedirs(f"{base_dir}/geometry", exist_ok=True)
+    os.makedirs(f"{base_dir}/polar_data", exist_ok=True)
+    os.makedirs(f"{base_dir}/plots", exist_ok=True)
+
+    print(f"Processing NACA {naca_id}...")
+
+    # 1. Download Geometry (.txt)
+    try:
+        geo_url = BASE_URL_GEO.format(naca_id)
+        r_geo = requests.get(geo_url, timeout=10)
+        if "NACA" in r_geo.text:
+            with open(f"{base_dir}/geometry/naca{naca_id}_geom.txt", "w") as f:
+                f.write(r_geo.text)
+    except Exception as e:
+        print(f"  [!] Error fetching geometry for {naca_id}: {e}")
+
+    # 2. Download Polar Data (.csv)
+    csv_data = None
+    try:
+        polar_url = BASE_URL_POLAR.format(naca_id)
+        r_polar = requests.get(polar_url, timeout=10)
+        
+        # Check if valid CSV (AirfoilTools returns HTML if not found)
+        if "Alpha,Cl,Cd" in r_polar.text:
+            # Save raw CSV
+            with open(f"{base_dir}/polar_data/naca{naca_id}_re{REYNOLDS_NUMBER}.csv", "w") as f:
+                f.write(r_polar.text)
+            
+            # Parse for plotting (Skip metadata rows, usually first 10 lines)
+            # We look for the header line starting with "Alpha"
+            csv_lines = r_polar.text.splitlines()
+            header_idx = next(i for i, line in enumerate(csv_lines) if line.startswith("Alpha"))
+            
+            csv_data = pd.read_csv(io.StringIO(r_polar.text), skiprows=header_idx)
+        else:
+            print(f"  [!] Polar data not found for NACA {naca_id} at Re={REYNOLDS_NUMBER}")
+            return # Skip plotting if no data
+
+    except Exception as e:
+        print(f"  [!] Error fetching polar for {naca_id}: {e}")
+        return
+
+    # 3. Generate Polar Plot (Cl vs Cd)
+    if csv_data is not None:
+        plt.figure(figsize=(8, 6))
+        
+        # Plot Cl vs Cd (The Drag Polar)
+        # Note: AirfoilTools CSV headers are usually: Alpha, Cl, Cd, Cdp, Cm...
+        plt.plot(csv_data['Cd'], csv_data['Cl'], 'b.-', label=f'Re = {REYNOLDS_NUMBER}')
+        
+        plt.title(f'Drag Polar: NACA {naca_id} ({category})')
+        plt.xlabel('Drag Coefficient ($C_d$)')
+        plt.ylabel('Lift Coefficient ($C_l$)')
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.legend()
+        
+        # Save Plot
+        plot_path = f"{base_dir}/plots/naca{naca_id}_polar.png"
+        plt.savefig(plot_path)
+        plt.close()
+
+    # Be polite to the server
+    time.sleep(0.5)
+
+if __name__ == "__main__":
+    print(f"--- Starting Download for Re={REYNOLDS_NUMBER} ---")
+    
+    for naca in symmetric_naca:
+        fetch_and_plot(naca, "symmetric")
+        
+    for naca in asymmetric_naca:
+        fetch_and_plot(naca, "asymmetric")
+        
+    print("\n--- Complete! ---")
+    print(f"Check the 'naca_data' folder for your files.")
