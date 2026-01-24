@@ -341,7 +341,6 @@ canvas {
 #graphs-column .canvas-wrapper:not(#avgThrustStatus):not(#avgLiftStatus):not(#avgGForceStatus) canvas {
     width: 100%;
     height: 100%;
-    object-fit: contain;
     flex: 1;
 }
 

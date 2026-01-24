@@ -986,9 +986,9 @@ function drawSimpleGraph(ctx, data, title, colorPositive, colorNegative, data2, 
     const fontStack = "Verdana, Arial, sans-serif";
     
     const leftMargin = 50 * scale;
-    const rightMargin = 10 * scale;
-    const topMargin = 20 * scale;
-    const bottomMargin = 15 * scale;
+    const rightMargin = 5 * scale;
+    const topMargin = 15 * scale;
+    const bottomMargin = 10 * scale;
 
     // Title
     ctx.font =  (8 * scale) + "px " + fontStack;
@@ -1292,7 +1292,7 @@ function drawAirfoilShape() {
     ctx.fillStyle = "#333";
     ctx.font = (14 * scale) + "px sans-serif";
     const foilName = document.getElementById('disp-foil-name').textContent;
-    ctx.fillText(`Visual Profile (${foilName})`, 10 * scale, 30 * scale);
+    ctx.fillText(`Profile Shape (${foilName})`, 10 * scale, 30 * scale);
     
     ctx.beginPath();
     ctx.strokeStyle = "black";
