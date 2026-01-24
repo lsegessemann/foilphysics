@@ -20,7 +20,7 @@
             <div id="ui-overlay">
                 <strong>Live Telemetry</strong><br>
                 Time: <span id="val-time">0.00</span> s<br>
-                Reynolds: <span id="val-re">0</span><br>
+                Reynolds Nr: <span id="val-re">0</span><br>
                 <hr>
                 Pitch (vs Horizon): <span id="val-pitch">0.0</span>°<br>
                 <span class="tooltip">AoA (vs Water flow)
@@ -105,6 +105,9 @@
                     <div class="control-group" title="Upload Airfoil Shape DAT/TXT" style="margin-bottom: 0; min-width: auto;">
                         <label style="margin-bottom: 2px;">Shape: <span id="disp-foil-name" style="font-weight:normal; font-size: 0.9em; color:#666;">NACA 0015</span></label>
                         <div style="display:flex; gap:4px; align-items: center;"><input type="file" id="in-foil-file" accept=".dat,.txt" style="font-size: 10px; width: 140px;"><button id="btn-reset-foil" style="font-size:10px; padding: 1px 5px; cursor:pointer; border:1px solid #cbd5e1; background:#fff; border-radius:3px;" title="Revert to NACA 0015">✕</button></div>
+                    </div>
+                    <div style="width: 100%; text-align: center; font-size: 10px; color: #64748b; margin-top: 2px;">
+                        Go to <a href="http://www.airfoiltools.com" target="_blank" style="color: #0369a1; text-decoration: underline;">www.airfoiltools.com</a> to download a specific profile
                     </div>
                 </div>
 
@@ -1976,8 +1979,8 @@ function render(data) {
 }
 
 // --- AIRFOIL PRESETS ---
-const symmetric_airfoils = ["naca0008", "naca0010", "naca0015", "naca0018", "naca0021", "naca0024"];
-const asymmetric_airfoils = ["naca1408", "naca1412", "naca2408", "naca2410", "naca2411", "naca2412", "naca2415", "naca2424", "naca4412", "naca4415", "naca4418", "naca4421", "naca4424", "naca6412"];
+const symmetric_airfoils = ["naca0008", "naca0010", "naca0015"];
+const asymmetric_airfoils = ["naca1408", "naca1412", "naca2408", "naca2410", "naca2411", "naca2412", "naca2415", "naca4412", "naca4415", "naca6412"];
 
 const airfoilSelect = document.getElementById('in-airfoil-select');
 
