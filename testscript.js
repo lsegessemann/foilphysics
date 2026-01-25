@@ -445,6 +445,20 @@ async function runBatchAnalysis() {
                 btn.textContent = `RUNNING ${Math.round(stepCount/totalSteps*100)}%`;
 
                 const res = optimizeForSpeed(spd);
+                results.push({
+                    [p1Key]: v1,
+                    [p2Key]: v2,
+                    "Speed": spd,
+                    "Power": res.power.toFixed(1),
+                    "NormPower": res.normPower.toFixed(1),
+                    "Freq": res.freq.toFixed(2),
+                    "Amp": res.amp.toFixed(2),
+                    "Trim": res.trim.toFixed(1),
+                    "Asym": res.asym.toFixed(2),
+                    "Phase": res.phase.toFixed(0),
+                    "Depth": res.height.toFixed(2),
+                    "Valid": res.valid ? "TRUE" : "FALSE"
+                });
                 if (res.valid) {
                     seriesData.points.push({ x: spd, y: res.power });
                 }
@@ -463,12 +477,35 @@ async function runBatchAnalysis() {
     }
 
     // --- 5. OUTPUT CSV ---
-    const headers = Object.keys(results[0]).join(",");
-    const rows = results.map(r => Object.values(r).join(",")).join("\n");
-    const csvContent = headers + "\n" + rows;
+    if (results.length > 0) {
+        const headers = Object.keys(results[0]).join(",");
+        const rows = results.map(r => Object.values(r).join(",")).join("\n");
+        const csvContent = headers + "\n" + rows;
 
-    console.log("\n%c--- FINAL CSV OUTPUT ---", "color: #166534; font-weight: bold; font-size: 14px;");
-    console.log(csvContent);
+        console.log("\n%c--- FINAL CSV OUTPUT ---", "color: #166534; font-weight: bold; font-size: 14px;");
+        console.log(csvContent);
+
+        // Create Download Button
+        const btnExport = document.createElement('button');
+        btnExport.textContent = "📥 DOWNLOAD CSV RESULTS";
+        btnExport.style.cssText = "display: block; margin: 0 auto 20px auto; padding: 8px 16px; background: #059669; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;";
+        btnExport.onclick = () => {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "batch_analysis.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+        
+        if (container.children.length > 0) {
+            container.insertBefore(btnExport, container.children[1]);
+        } else {
+            container.appendChild(btnExport);
+        }
+    }
     
     // Restore original state
     if (savedState && typeof applyPresetState === 'function') {
