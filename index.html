@@ -103,8 +103,8 @@
                         <div style="display:flex; gap:4px; align-items: center;"><input type="file" id="in-polar-file" accept=".csv,.txt" style="font-size: 10px; width: 140px;"><button id="btn-clear-polar" style="font-size:10px; padding: 1px 5px; cursor:pointer; border:1px solid #cbd5e1; background:#fff; border-radius:3px;" title="Revert to default model">✕</button></div>
                     </div>
                     <div class="control-group" title="Upload Airfoil Shape DAT/TXT" style="margin-bottom: 0; min-width: auto;">
-                        <label style="margin-bottom: 2px;">Shape: <span id="disp-foil-name" style="font-weight:normal; font-size: 0.9em; color:#666;">NACA 0015</span></label>
-                        <div style="display:flex; gap:4px; align-items: center;"><input type="file" id="in-foil-file" accept=".dat,.txt" style="font-size: 10px; width: 140px;"><button id="btn-reset-foil" style="font-size:10px; padding: 1px 5px; cursor:pointer; border:1px solid #cbd5e1; background:#fff; border-radius:3px;" title="Revert to NACA 0015">✕</button></div>
+                        <label style="margin-bottom: 2px;">Shape: <span id="disp-foil-name" style="font-weight:normal; font-size: 0.9em; color:#666;">NACA 2408</span></label>
+                        <div style="display:flex; gap:4px; align-items: center;"><input type="file" id="in-foil-file" accept=".dat,.txt" style="font-size: 10px; width: 140px;"><button id="btn-reset-foil" style="font-size:10px; padding: 1px 5px; cursor:pointer; border:1px solid #cbd5e1; background:#fff; border-radius:3px;" title="Revert to NACA 2408">✕</button></div>
                     </div>
                     <div style="width: 100%; text-align: center; font-size: 10px; color: #64748b; margin-top: 2px;">
                         Go to <a href="http://www.airfoiltools.com" target="_blank" style="color: #0369a1; text-decoration: underline;">www.airfoiltools.com</a> to download a specific profile
@@ -153,7 +153,7 @@
                 </div>
                 <div class="control-group" title="Surface area of the front wing. Larger wings lift more but drag more.">
                     <label>Wing Area: <span id="disp-area">1350</span> cm²</label>
-                    <input type="range" id="in-area" min="600" max="2000" step="50" value="1350">
+                    <input type="range" id="in-area" min="600" max="2500" step="50" value="1350">
                 </div>
                 <div class="control-group" title="Ratio of span to chord. High AR is more efficient (glides better).">
                     <label>Wing AR: <span id="disp-ar">13.9</span></label>
@@ -221,7 +221,7 @@
                         </div>
                     </div>
                     <div class="slider-wrapper">
-                        <input type="range" id="in-amp" min="0.00" max="0.30" step="0.01" value="0.11">
+                        <input type="range" id="in-amp" min="0.00" max="0.40" step="0.01" value="0.11">
                         <div class="limit-handle min-handle" data-for="in-amp" data-type="min"></div>
                         <div class="limit-handle max-handle" data-for="in-amp" data-type="max"></div>
                     </div>
@@ -321,27 +321,71 @@
             </div>
 
             <div class="control-section control-section-simulation">
-                <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
-                    <label>Swing Weight: <span id="disp-swing">40</span>%</label>
-                    <input type="range" id="in-swing" min="0.0" max="1.0" step="0.05" value="0.4">
-                </div>
-                <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
-                    <label>System Elasticity: <span id="disp-elastic">0</span>%</label>
-                    <input type="range" id="in-elastic" min="0" max="30" step="1" value="0">
-                </div>
-                <div class="control-group" title="Zoom level for the foil visualization.">
-                    <label>Visualization Scale: <span id="disp-size">0.40</span></label>
-                    <input type="range" id="in-size" min="0.10" max="1.0" step="0.05" value="0.4">
-                </div>
-                <div class="control-group" title="Toggle Hydrodynamic Added Mass (Virtual Mass of water moving with the wing).">
-                    <label class="label-inline"><input type="checkbox" id="chk-added-mass" checked> Enable Added Mass</label>
-                </div>
+                <details>
+                    <summary style="font-size: 11px; font-weight: bold; color: #475569; cursor: pointer; margin-bottom: 5px; outline: none;">More System Configurations Parameters</summary>
+                    <div class="control-group" title="Percentage of body mass that moves with the board up and down.">
+                        <label>Swing Weight: <span id="disp-swing">40</span>%</label>
+                        <input type="range" id="in-swing" min="0.0" max="1.0" step="0.05" value="0.4">
+                    </div>
+                    <div class="control-group" title="Percentage of energy from system elasticity, helping to pump more efficiently.">
+                        <label>System Elasticity: <span id="disp-elastic">0</span>%</label>
+                        <input type="range" id="in-elastic" min="0" max="30" step="1" value="0">
+                    </div>
+                </details>
             </div>
             
             <div class="action-buttons-row">
                 <button id="btn-reset" class="action-button">RESET</button>
                 <button id="btn-replay" class="action-button">REPLAY</button>
                 <button id="btn-tests" class="action-button" title="Run Validation Suite (Check Console)">TESTS</button>
+            </div>
+
+            <div class="control-section" style="background-color: #eef2ff; border: 1px solid #c7d2fe; margin-top: 10px;">
+                <div class="step-label" style="color: #3730a3;">Batch Analysis</div>
+                <div class="control-group">
+                    <label>Primary Parameter</label>
+                    <select id="batch-p1-sel" style="font-size:10px; padding:2px;">
+                        <option value="mass">Rider Mass (kg)</option>
+                        <option value="board_mass">Board Mass (kg)</option>
+                        <option value="S" selected>Wing Area (cm²)</option>
+                        <option value="AR">Wing AR</option>
+                        <option value="S_stab">Stab Area (cm²)</option>
+                        <option value="fuselage_len">Fuselage Length (m)</option>
+                        <option value="rider_offset">Rider Offset (m)</option>
+                        <option value="water_temp">Water Temp (°C)</option>
+                        <option value="stab_angle">Stab Angle (°)</option>
+                        <option value="AR_stab">Stab AR</option>
+                    </select>
+                    <div class="flex-gap-xs">
+                        <input type="number" id="batch-p1-v1" value="1300" class="range-number-input" style="width:33%">
+                        <input type="number" id="batch-p1-v2" value="1600" class="range-number-input" style="width:33%">
+                        <input type="number" id="batch-p1-v3" value="1900" class="range-number-input" style="width:33%">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Secondary Parameter</label>
+                    <select id="batch-p2-sel" style="font-size:10px; padding:2px;">
+                        <option value="mass" selected>Rider Mass (kg)</option>
+                        <option value="board_mass">Board Mass (kg)</option>
+                        <option value="S">Wing Area (cm²)</option>
+                        <option value="AR">Wing AR</option>
+                        <option value="S_stab">Stab Area (cm²)</option>
+                        <option value="fuselage_len">Fuselage Length (m)</option>
+                        <option value="rider_offset">Rider Offset (m)</option>
+                        <option value="water_temp">Water Temp (°C)</option>
+                        <option value="stab_angle">Stab Angle (°)</option>
+                        <option value="AR_stab">Stab AR</option>
+                    </select>
+                    <div class="flex-gap-xs">
+                        <input type="number" id="batch-p2-v1" value="70" class="range-number-input" style="width:33%">
+                        <input type="number" id="batch-p2-v2" value="80" class="range-number-input" style="width:33%">
+                        <input type="number" id="batch-p2-v3" value="90" class="range-number-input" style="width:33%">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="label-inline" style="font-weight:normal; text-transform:none; margin-top:4px; font-size:10px;"><input type="checkbox" id="batch-combine-graphs"> Combine all results in one graph</label>
+                </div>
+                <button id="btn-run-batch" class="action-button" style="background:#4f46e5; color:white; margin-top:5px;">RUN BATCH ANALYSIS</button>
             </div>
 
         </div>
@@ -507,6 +551,8 @@
             </div>
         </div>
     </div>
+    
+    <div id="batch-graphs-container" style="width:100%; max-width: 900px; display:flex; flex-direction:column; gap:20px; align-items:center; margin-top:20px; padding-bottom: 50px;"></div>
 
 <script>
 /**
@@ -661,7 +707,6 @@ const ui = {
     dispPpm: document.getElementById('disp-ppm'),
     dispAmp: document.getElementById('disp-amp'),
     dispAsym: document.getElementById('disp-asym'),
-    dispSize: document.getElementById('disp-size'),
     dispSpeed: document.getElementById('disp-speed'),
     dispMass: document.getElementById('disp-mass'),
     dispBoardMass: document.getElementById('disp-board-mass'),
@@ -2087,9 +2132,9 @@ airfoilSelect.addEventListener('change', (e) => {
     loadPresetAirfoil(e.target.value);
 });
 
-// Load default NACA 0015 on startup
-airfoilSelect.value = "naca0015";
-loadPresetAirfoil("naca0015");
+// Load default NACA 2408 on startup
+airfoilSelect.value = "naca2408";
+loadPresetAirfoil("naca2408");
 
 
 // --- LISTENERS ---
@@ -2105,7 +2150,6 @@ document.getElementById('in-amp').addEventListener('input', (e) => {
     ui.dispAmp.textContent = state.heave_amp.toFixed(2); 
 });
 document.getElementById('in-asym').addEventListener('input', (e) => { CONFIG.asymmetry_factor = parseFloat(e.target.value); ui.dispAsym.textContent = CONFIG.asymmetry_factor.toFixed(2); });
-document.getElementById('in-size').addEventListener('input', (e) => { CONFIG.visual_size_m = parseFloat(e.target.value); ui.dispSize.textContent = CONFIG.visual_size_m.toFixed(2); });
 document.getElementById('in-speed').addEventListener('input', (e) => { const kph = parseFloat(e.target.value); CONFIG.U = kph / 3.6; ui.dispSpeed.textContent = kph.toFixed(1); });
 document.getElementById('in-mass').addEventListener('input', (e) => { CONFIG.mass = parseFloat(e.target.value); ui.dispMass.textContent = CONFIG.mass.toFixed(0); });
 document.getElementById('in-board-mass').addEventListener('input', (e) => { CONFIG.board_mass = parseFloat(e.target.value); ui.dispBoardMass.textContent = CONFIG.board_mass.toFixed(1); });
@@ -2116,7 +2160,6 @@ document.getElementById('in-phase').addEventListener('input', (e) => { CONFIG.ph
 document.getElementById('in-swing').addEventListener('input', (e) => { CONFIG.swing_weight_ratio = parseFloat(e.target.value); ui.dispSwing.textContent = (CONFIG.swing_weight_ratio * 100).toFixed(0); });
 document.getElementById('in-elastic').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.elastic_efficiency = 1.0 - (val / 100.0); ui.dispElastic.textContent = val.toFixed(0); });
 document.getElementById('chk-slowmo').addEventListener('change', (e) => { state.slowMotion = e.target.checked; });
-document.getElementById('chk-added-mass').addEventListener('change', (e) => { CONFIG.enable_added_mass = e.target.checked; });
 document.getElementById('in-stab-angle').addEventListener('input', (e) => { CONFIG.stab_angle = parseFloat(e.target.value); ui.dispStabAngle.textContent = CONFIG.stab_angle.toFixed(1); });
 document.getElementById('in-stab-area').addEventListener('input', (e) => { const val = parseFloat(e.target.value); CONFIG.S_stab = val / 10000; ui.dispStabArea.textContent = val.toFixed(0); });
 document.getElementById('in-stab-ar').addEventListener('input', (e) => { CONFIG.AR_stab = parseFloat(e.target.value); ui.dispStabAr.textContent = CONFIG.AR_stab.toFixed(1); });
@@ -2220,7 +2263,7 @@ document.getElementById('in-foil-file').addEventListener('change', (e) => {
     };
     reader.readAsText(file);
 });
-document.getElementById('btn-reset-foil').addEventListener('click', () => { foilShape = getNACA00xx(0.15, 40); document.getElementById('disp-foil-name').textContent = "NACA 0015"; document.getElementById('in-foil-file').value = ""; drawAirfoilShape(); if (state.paused) render(updatePhysicsState(0)); });
+document.getElementById('btn-reset-foil').addEventListener('click', () => { airfoilSelect.value = "naca2408"; loadPresetAirfoil("naca2408"); document.getElementById('in-foil-file').value = ""; });
 
 document.getElementById('btn-optimize').addEventListener('click', () => {
     const btn = document.getElementById('btn-optimize');
@@ -2464,9 +2507,9 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     document.getElementById('lock-phase').checked = true;
     CONFIG.swing_weight_ratio = 0.4; document.getElementById('in-swing').value = 0.4; ui.dispSwing.textContent = "40";
     CONFIG.elastic_efficiency = 1.0; document.getElementById('in-elastic').value = 0; ui.dispElastic.textContent = "0";
-    CONFIG.visual_size_m = 0.4; document.getElementById('in-size').value = 0.4; ui.dispSize.textContent = "0.40";
+    CONFIG.visual_size_m = 0.4;
     state.slowMotion = false; document.getElementById('chk-slowmo').checked = false;
-    CONFIG.enable_added_mass = true; document.getElementById('chk-added-mass').checked = true;
+    CONFIG.enable_added_mass = true;
     CONFIG.stab_angle = -1.0; document.getElementById('in-stab-angle').value = -1.0; ui.dispStabAngle.textContent = "-1.0";
     CONFIG.S_stab = 0.012; document.getElementById('in-stab-area').value = 120; ui.dispStabArea.textContent = "120";
     CONFIG.AR_stab = 8.0; document.getElementById('in-stab-ar').value = 8.0; ui.dispStabAr.textContent = "8.0";
@@ -2665,8 +2708,7 @@ function captureCurrentState() {
         fuseLen: parseFloat(document.getElementById('in-fuse-len').value),
         offset: parseFloat(document.getElementById('in-offset').value),
         swing: parseFloat(document.getElementById('in-swing').value),
-        elastic: parseFloat(document.getElementById('in-elastic').value),
-        size: parseFloat(document.getElementById('in-size').value)
+        elastic: parseFloat(document.getElementById('in-elastic').value)
     };
 }
 
@@ -2690,7 +2732,6 @@ function applyPresetState(p) {
     document.getElementById('in-offset').value = p.offset;
     document.getElementById('in-swing').value = p.swing;
     document.getElementById('in-elastic').value = p.elastic;
-    document.getElementById('in-size').value = p.size;
 
     // Update Config/State
     CONFIG.U = p.speed / 3.6;
@@ -2712,7 +2753,7 @@ function applyPresetState(p) {
     CONFIG.rider_offset = p.offset;
     CONFIG.swing_weight_ratio = p.swing;
     CONFIG.elastic_efficiency = 1.0 - (p.elastic / 100.0);
-    CONFIG.visual_size_m = p.size;
+    if (p.size !== undefined) CONFIG.visual_size_m = p.size;
 
     // Update UI Text
     ui.dispSpeed.textContent = p.speed.toFixed(1);
@@ -2734,7 +2775,6 @@ function applyPresetState(p) {
     ui.dispOffset.textContent = p.offset.toFixed(2);
     ui.dispSwing.textContent = (p.swing * 100).toFixed(0);
     ui.dispElastic.textContent = p.elastic.toFixed(0);
-    ui.dispSize.textContent = p.size.toFixed(2);
     
     // Reset History to avoid graph jumps
     state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; 
@@ -3080,7 +3120,7 @@ document.querySelectorAll('.range-toggle').forEach(btn => {
 
 const RANGE_DEFAULTS = {
     'in-freq': {min: 0.01, max: 2.5},
-    'in-amp': {min: 0.00, max: 0.30},
+    'in-amp': {min: 0.00, max: 0.40},
     'in-asym': {min: 0.0, max: 0.8},
     'in-trim': {min: -2.0, max: 10.0},
     'in-phase': {min: 80, max: 110},
@@ -3217,5 +3257,6 @@ document.getElementById('doc-close').addEventListener('click', () => {
 });
 
 </script>
+<script src="testscript.js"></script>
 </body>
 </html>

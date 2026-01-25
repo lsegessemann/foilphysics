@@ -522,7 +522,7 @@ input[type=range]::-webkit-slider-thumb:hover {
     bottom: 0;
     width: 20px;
     cursor: ew-resize;
-    z-index: var(--z-overlay);
+    z-index: 2;
     transform: translateX(-50%);
     touch-action: none;
 }

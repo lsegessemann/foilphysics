@@ -1,7 +1,15 @@
-(function() {
-    console.clear();
-    console.log("%c🚀 STARTING HIGH-RES BATCH OPTIMIZATION (WITH KINEMATICS)...", "color: #2563eb; font-weight: bold; font-size: 14px;");
+const btnRunBatch = document.getElementById('btn-run-batch');
+if (btnRunBatch) {
+    btnRunBatch.addEventListener('click', runBatchAnalysis);
+}
 
+async function runBatchAnalysis() {
+    const btn = document.getElementById('btn-run-batch');
+    btn.textContent = "RUNNING...";
+    
+    // Capture current state to restore after analysis
+    const savedState = typeof captureCurrentState === 'function' ? captureCurrentState() : null;
+    
     // --- 0. DEPENDENCY CHECK & ABSTRACTION ---
     if (typeof CONFIG === 'undefined' || typeof state === 'undefined' || typeof calculatePhysics === 'undefined') {
         console.error("❌ CRITICAL: Simulation globals (CONFIG, state, calculatePhysics) not found.");
@@ -19,7 +27,6 @@
     const redBoxUnchanged = {
         "Foil Setup Mass (kg)": SIM.config.board_mass,
         "Wing AR": SIM.config.AR,
-        "Drag Coeff (Cd0)": SIM.config.Cd0,
         "Stab Area (cm²)": (SIM.config.S_stab * 10000).toFixed(0),
         "Stab AR": SIM.config.AR_stab,
         "Stab Angle (°)": SIM.config.stab_angle,
@@ -29,8 +36,7 @@
 
     const greyBoxUnchanged = {
         "Swing Weight (%)": (SIM.config.swing_weight_ratio * 100).toFixed(0),
-        "System Elasticity (%)": ((1.0 - SIM.config.elastic_efficiency) * 100).toFixed(0),
-        "Added Mass Enabled": SIM.config.enable_added_mass
+        "System Elasticity (%)": ((1.0 - SIM.config.elastic_efficiency) * 100).toFixed(0)
     };
 
     console.log("\n%c--- UNCHANGED PARAMETERS (RED BOX) ---", "color: #d946ef; font-weight: bold;");
@@ -83,32 +89,42 @@
     const optMetric = document.getElementById('opt-metric') ? document.getElementById('opt-metric').value : 'avg';
     console.log(`%c   🎯 Optimizing for: ${optMetric === 'norm' ? 'NORMALIZED POWER' : 'AVERAGE POWER'}`, "color: #d97706; font-weight: bold;");
 
-    // --- 2. DEFINE TEST CASES ---
-    const combinations = [];
-    const masses = [70, 80, 90];
-    const areas = [1300, 2000];
-    
-    // Generate speeds from 12.0 to 20.0 in 0.5 steps
+    // --- 2. DEFINE TEST CASES (FROM UI) ---
+    const p1Key = document.getElementById('batch-p1-sel').value;
+    const p1Vals = [
+        document.getElementById('batch-p1-v1').value,
+        document.getElementById('batch-p1-v2').value,
+        document.getElementById('batch-p1-v3').value
+    ].filter(v => v.trim() !== "").map(parseFloat).filter(v => !isNaN(v));
+
+    const p2Key = document.getElementById('batch-p2-sel').value;
+    const p2Vals = [
+        document.getElementById('batch-p2-v1').value,
+        document.getElementById('batch-p2-v2').value,
+        document.getElementById('batch-p2-v3').value
+    ].filter(v => v.trim() !== "").map(parseFloat).filter(v => !isNaN(v));
+
+    if (p1Vals.length === 0 || p2Vals.length === 0) {
+        alert("Please enter at least one valid value for both Primary and Secondary parameters.");
+        btn.textContent = "RUN BATCH ANALYSIS";
+        return;
+    }
+
+    // Generate speeds from 12.0 to 25.0 in 1.0 steps
     const speeds = [];
-    for (let s = 12.0; s <= 20.0; s += 0.5) {
+    for (let s = 12.0; s <= 25.0; s += 1.0) {
         speeds.push(parseFloat(s.toFixed(1))); 
     }
 
-    masses.forEach(mass => {
-        areas.forEach(area => {
-            speeds.forEach(speed => {
-                combinations.push({ mass, area, speed });
-            });
-        });
-    });
+    // Helper for Unit Conversion
+    const applyParam = (key, val) => {
+        if (key === 'S' || key === 'S_stab') SIM.config[key] = val / 10000;
+        else SIM.config[key] = val;
+    };
 
     // --- 3. OPTIMIZATION ENGINE ---
-    function findOptimalSettings(targetMass, targetAreaCm2, targetSpeedKph) {
-        // 1. Apply Configuration
-        SIM.config.mass = targetMass;
-        SIM.config.S = targetAreaCm2 / 10000; // Convert cm² to m²
-        SIM.config.U = targetSpeedKph / 3.6;  // Convert km/h to m/s
-
+    function optimizeForSpeed(targetSpeedKph) {
+        SIM.config.U = targetSpeedKph / 3.6;
         const targetLift = (SIM.config.mass + SIM.config.board_mass) * SIM.config.g;
         const targetRiderWeight = SIM.config.mass * SIM.config.g;
         
@@ -299,29 +315,152 @@
 
     // --- 4. EXECUTE BATCH ---
     const results = [];
-    console.log("\n%c--- PROCESSING " + combinations.length + " COMBINATIONS ---", "color: #000; font-weight: bold;");
+    const totalSteps = p1Vals.length * p2Vals.length * speeds.length;
+    let stepCount = 0;
+
+    // Clear previous graphs
+    const container = document.getElementById('batch-graphs-container');
+    container.innerHTML = '';
+
+    // --- DISPLAY CONSTANTS ---
+    const paramDefs = [
+        { key: 'mass', label: 'Rider Mass', unit: 'kg', fixed: 0 },
+        { key: 'board_mass', label: 'Board Mass', unit: 'kg', fixed: 1 },
+        { key: 'S', label: 'Wing Area', unit: 'cm²', scale: 10000, fixed: 0 },
+        { key: 'AR', label: 'Wing AR', unit: '', fixed: 1 },
+        { key: 'S_stab', label: 'Stab Area', unit: 'cm²', scale: 10000, fixed: 0 },
+        { key: 'fuselage_len', label: 'Fuse Len', unit: 'm', fixed: 2 },
+        { key: 'rider_offset', label: 'Offset', unit: 'm', fixed: 2 },
+        { key: 'water_temp', label: 'Water Temp', unit: '°C', fixed: 0 },
+        { key: 'stab_angle', label: 'Stab Angle', unit: '°', fixed: 1 },
+        { key: 'AR_stab', label: 'Stab AR', unit: '', fixed: 1 }
+    ];
+
+    const constantParams = paramDefs.filter(p => p.key !== p1Key && p.key !== p2Key);
+
+    const infoWrapper = document.createElement('div');
+    infoWrapper.style.cssText = "width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
     
-    combinations.forEach((c, idx) => {
-        const progress = `[${idx + 1}/${combinations.length}]`;
-        console.log(`${progress} Optimizing: ${c.mass}kg | ${c.area}cm² | ${c.speed}km/h ...`);
-        
-        const result = findOptimalSettings(c.mass, c.area, c.speed);
-        
-        results.push({
-            "Mass (kg)": c.mass,
-            "Wing Area (cm²)": c.area,
-            "Speed (km/h)": c.speed,
-            "Optimal Avg Power (W)": result.power.toFixed(1),
-            "Optimal Norm Power (W)": result.normPower.toFixed(1),
-            "Optimal Freq (Hz)": result.freq.toFixed(2),
-            "Optimal Amp (m)": result.amp.toFixed(3),
-            "Optimal Trim (°)": result.trim.toFixed(1),
-            "Optimal Asym": result.asym.toFixed(2),
-            "Optimal Phase (°)": result.phase.toFixed(0),
-            "Optimal Depth (m)": result.height.toFixed(2),
-            "Valid": result.valid
-        });
+    const infoTitle = document.createElement('div');
+    infoTitle.textContent = "CONSTANT PARAMETERS";
+    infoTitle.style.cssText = "font-size: 10px; font-weight: bold; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;";
+    infoWrapper.appendChild(infoTitle);
+
+    const infoGrid = document.createElement('div');
+    infoGrid.style.cssText = "display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; font-size: 11px; color: #334155;";
+    
+    constantParams.forEach(p => {
+        let val = SIM.config[p.key];
+        if (p.scale) val *= p.scale;
+        const valStr = (p.fixed !== undefined) ? val.toFixed(p.fixed) : val;
+        const item = document.createElement('div');
+        item.style.cssText = "background: #f1f5f9; padding: 4px 8px; border-radius: 4px;";
+        item.innerHTML = `<span style="color: #64748b; font-weight: 600;">${p.label}:</span> <span style="font-weight: bold; color: #0f172a;">${valStr}</span> ${p.unit}`;
+        infoGrid.appendChild(item);
     });
+    infoWrapper.appendChild(infoGrid);
+
+    // --- DISPLAY OPTIMIZATION LIMITS ---
+    const limitsTitle = document.createElement('div');
+    limitsTitle.textContent = "OPTIMIZATION LIMITS";
+    limitsTitle.style.cssText = "font-size: 10px; font-weight: bold; color: #d97706; margin-top: 12px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 12px;";
+    infoWrapper.appendChild(limitsTitle);
+
+    const limitsGrid = document.createElement('div');
+    limitsGrid.style.cssText = "display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; font-size: 11px; color: #334155;";
+
+    const limitKeys = [
+        { key: 'freq', label: 'Freq', unit: 'Hz' },
+        { key: 'amp', label: 'Amp', unit: 'm' },
+        { key: 'trim', label: 'Trim', unit: '°' },
+        { key: 'asym', label: 'Asym', unit: '' },
+        { key: 'phase', label: 'Phase', unit: '°' },
+        { key: 'height', label: 'Depth', unit: 'm' }
+    ];
+
+    limitKeys.forEach(l => {
+        const isLocked = locks[l.key];
+        const range = limits[l.key];
+        const val = lockedVals[l.key];
+        
+        const item = document.createElement('div');
+        item.style.cssText = "background: #fff7ed; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffedd5;";
+        
+        let content = `<span style="color: #9a3412; font-weight: 600;">${l.label}:</span> `;
+        if (isLocked) {
+             content += `<span style="font-weight: bold; color: #9a3412;">🔒 ${val.toFixed(2)}</span>`;
+        } else {
+             content += `<span style="font-weight: bold; color: #9a3412;">${range.min} - ${range.max}</span>`;
+        }
+        if (l.unit) content += ` <span style="color: #c2410c; font-size: 0.9em;">${l.unit}</span>`;
+        
+        item.innerHTML = content;
+        limitsGrid.appendChild(item);
+    });
+    infoWrapper.appendChild(limitsGrid);
+    container.appendChild(infoWrapper);
+
+    const combineGraphs = document.getElementById('batch-combine-graphs') ? document.getElementById('batch-combine-graphs').checked : false;
+    const combinedSeries = [];
+
+    // Base colors for grouping (HSL)
+    const baseHues = [221, 348, 142, 32, 271, 189, 330, 45]; // Blue, Red, Green, Orange, Purple, Cyan, Pink, Yellow
+
+    // Iterate P1 (Outer - Graphs)
+    for (let i1 = 0; i1 < p1Vals.length; i1++) {
+        const v1 = p1Vals[i1];
+        const graphData = {
+            title: `${p1Key.toUpperCase()}: ${v1}`,
+            series: []
+        };
+
+        // Iterate P2 (Inner - Lines)
+        for (let i2 = 0; i2 < p2Vals.length; i2++) {
+            const v2 = p2Vals[i2];
+            const label = combineGraphs 
+                ? `${p1Key}: ${v1} | ${p2Key}: ${v2}`
+                : `${p2Key.toUpperCase()}: ${v2}`;
+            
+            let color = undefined;
+            if (combineGraphs) {
+                const hue = baseHues[i1 % baseHues.length];
+                let lightness = 50;
+                if (p2Vals.length > 1) {
+                    // Spread lightness from 30% to 70%
+                    lightness = 30 + (i2 / (p2Vals.length - 1)) * 40;
+                }
+                color = `hsl(${hue}, 80%, ${lightness}%)`;
+            }
+
+            const seriesData = { label: label, points: [], color: color };
+            
+            // Apply Params
+            applyParam(p1Key, v1);
+            applyParam(p2Key, v2);
+
+            // Iterate Speeds
+            for (let spd of speeds) {
+                stepCount++;
+                if (stepCount % 5 === 0) await new Promise(r => setTimeout(r, 0)); // Yield UI
+                btn.textContent = `RUNNING ${Math.round(stepCount/totalSteps*100)}%`;
+
+                const res = optimizeForSpeed(spd);
+                if (res.valid) {
+                    seriesData.points.push({ x: spd, y: res.power });
+                }
+            }
+            graphData.series.push(seriesData);
+            if (combineGraphs) combinedSeries.push(seriesData);
+        }
+        if (!combineGraphs) drawBatchGraph(container, graphData);
+    }
+
+    if (combineGraphs) {
+        drawBatchGraph(container, {
+            title: `Combined Analysis: ${p1Key.toUpperCase()} & ${p2Key.toUpperCase()}`,
+            series: combinedSeries
+        });
+    }
 
     // --- 5. OUTPUT CSV ---
     const headers = Object.keys(results[0]).join(",");
@@ -331,165 +470,98 @@
     console.log("\n%c--- FINAL CSV OUTPUT ---", "color: #166534; font-weight: bold; font-size: 14px;");
     console.log(csvContent);
     
-    // --- 6. CONSOLE GRAPH ---
-    // Helper: 2nd Degree Polynomial Regression (y = ax^2 + bx + c)
-    function getPolyFit(points) {
-        let n = points.length;
-        if (n < 3) return null;
-        let sx = 0, sx2 = 0, sx3 = 0, sx4 = 0;
-        let sy = 0, sxy = 0, sx2y = 0;
-        for (let p of points) {
-            let x = p.x; let y = p.y;
-            let x2 = x*x;
-            sx += x; sx2 += x2; sx3 += x2*x; sx4 += x2*x2;
-            sy += y; sxy += x*y; sx2y += x2*y;
-        }
-        // Gaussian elimination for 3x3 matrix
-        let m = [
-            [n, sx, sx2, sy],
-            [sx, sx2, sx3, sxy],
-            [sx2, sx3, sx4, sx2y]
-        ];
-        for (let i = 0; i < 3; i++) {
-            let pivot = m[i][i];
-            for (let j = i + 1; j < 3; j++) {
-                let factor = m[j][i] / pivot;
-                for (let k = i; k < 4; k++) m[j][k] -= factor * m[i][k];
-            }
-        }
-        let c = m[2][3] / m[2][2];
-        let b = (m[1][3] - m[1][2]*c) / m[1][1];
-        let a = (m[0][3] - m[0][2]*c - m[0][1]*b) / m[0][0];
-        const fn = (x) => a + b*x + c*x*x;
-        fn.coeffs = { a, b, c };
-        return fn;
+    // Restore original state
+    if (savedState && typeof applyPresetState === 'function') {
+        applyPresetState(savedState);
     }
-
-    function drawConsoleGraph(title, valueKey) {
-        const masses = [...new Set(results.map(r => r["Mass (kg)"]))].sort((a,b) => a-b);
-        const areasGraph = [...new Set(results.map(r => r["Wing Area (cm²)"]))].sort((a,b) => a-b);
-        const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']; 
+    btn.textContent = "RUN BATCH ANALYSIS";
+    
+    // --- 6. GRAPHING HELPER ---
+    function drawBatchGraph(container, data) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'canvas-wrapper';
+        wrapper.style.width = '100%';
+        wrapper.style.marginBottom = '20px';
         
-        masses.forEach(mass => {
-            console.log(`\n%c--- ${title} (${mass} kg) ---`, "color: #2563eb; font-weight: bold; font-size: 14px;");
-            
-            const massResults = results.filter(r => r["Mass (kg)"] == mass);
-            
-            const points = massResults.map(r => ({
-                x: parseFloat(r["Speed (km/h)"]),
-                y: parseFloat(r[valueKey])
-            }));
-            
-            if (points.length <= 1) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = 900;
+        canvas.height = 300;
+        wrapper.appendChild(canvas);
+        container.appendChild(wrapper);
+        
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        const pad = 60;
+        
+        // Background
+        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,w,h);
+        
+        // Title
+        ctx.fillStyle = "#333"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(data.title, w/2, 25);
+        
+        // Scales
+        const allPoints = data.series.flatMap(s => s.points);
+        if (allPoints.length === 0) return;
+        
+        const minX = 12.0; const maxX = 25.0;
+        const minY = 0; const maxY = Math.max(...allPoints.map(p => p.y)) * 1.1;
+        
+        const mapX = (v) => pad + ((v - minX) / (maxX - minX)) * (w - 2*pad);
+        const mapY = (v) => h - pad - (v / maxY) * (h - 2*pad);
+        
+        // Grid & Axes
+        ctx.font = "12px sans-serif";
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        
+        // X-Axis
+        ctx.textAlign = "center"; ctx.textBaseline = "top";
+        for(let x=minX; x<=maxX; x+=1) { const px = mapX(x); ctx.moveTo(px, pad); ctx.lineTo(px, h-pad); ctx.fillText(x, px, h-pad+15); }
 
-            const minX = Math.min(...points.map(p => p.x));
-            const maxX = Math.max(...points.map(p => p.x));
-            const minY = Math.min(...points.map(p => p.y));
-            const maxY = Math.max(...points.map(p => p.y));
-
-            const W = 60;
-            const H = 15;
-            const grid = Array(H).fill().map(() => Array(W).fill(null));
+        // Y-Axis
+        const yStep = Math.max(50, Math.ceil(maxY / 5 / 50) * 50);
+        ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        for(let y=0; y<=maxY; y+=yStep) {
+            const py = mapY(y);
+            ctx.moveTo(pad, py); ctx.lineTo(w-pad, py);
+            ctx.fillText(y, pad - 8, py);
+        }
+        ctx.stroke();
+        
+        // Series
+        const colors = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#9333ea', '#0891b2', '#db2777', '#4f46e5', '#ca8a04'];
+        
+        data.series.forEach((s, i) => {
+            const color = s.color || colors[i % colors.length];
+            ctx.fillStyle = color; ctx.strokeStyle = color;
             
-            areasGraph.forEach((area, idx) => {
-                const pts = massResults
-                    .filter(r => r["Wing Area (cm²)"] == area)
-                    .map(r => ({
-                        x: parseFloat(r["Speed (km/h)"]),
-                        y: parseFloat(r[valueKey]),
-                        valid: r["Valid"]
-                    }));
-                
-                pts.forEach(p => {
-                    const nx = (p.x - minX) / (maxX - minX || 1);
-                    const ny = (p.y - minY) / (maxY - minY || 1);
-                    const c = Math.min(W - 1, Math.max(0, Math.round(nx * (W - 1))));
-                    const r = Math.min(H - 1, Math.max(0, Math.round((1 - ny) * (H - 1))));
-                    if (!grid[r][c]) grid[r][c] = [];
-                    grid[r][c].push({ idx, valid: p.valid });
+            // Points
+            s.points.forEach(p => {
+                ctx.beginPath(); ctx.arc(mapX(p.x), mapY(p.y), 4, 0, Math.PI*2); ctx.fill();
+            });
+            
+            // Connect points
+            if (s.points.length > 1) {
+                ctx.beginPath(); ctx.lineWidth = 2;
+                s.points.forEach((p, idx) => {
+                    const px = mapX(p.x); const py = mapY(p.y);
+                    if (idx===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
                 });
-            });
-
-            console.log("%cLegend:", "font-weight:bold; color:#444");
-            areasGraph.forEach((area, i) => {
-                console.log(`%c● ${area} cm²`, `color: ${colors[i % colors.length]}; font-weight:bold`);
-            });
-            console.log(""); 
-
-            for (let r = 0; r < H; r++) {
-                const yVal = maxY - (r / (H - 1)) * (maxY - minY);
-                let rowStr = `%c${yVal.toFixed(0).padStart(4)} ┤`;
-                let rowStyles = ["color:#64748b"];
-                
-                let currentStyle = "";
-                
-                for (let c = 0; c < W; c++) {
-                    const points = grid[r][c];
-                    let char = " ";
-                    let style = "color:inherit; background:none";
-                    
-                    if (points && points.length > 0) {
-                        const unique = [...new Set(points.map(p => p.idx))].sort((a,b) => a-b);
-                        if (unique.length === 1) {
-                            const idx = unique[0];
-                            const anyInvalid = points.some(x => !x.valid);
-                            char = anyInvalid ? 'X' : '●';
-                            style = `color: ${colors[idx % colors.length]}; background:none; font-weight:bold`;
-                        } else {
-                            const idx1 = unique[0];
-                            const idx2 = unique[1];
-                            const anyInvalid = points.some(x => !x.valid);
-                            char = anyInvalid ? "X" : "▐";
-                            style = `color: ${colors[idx2 % colors.length]}; background: ${colors[idx1 % colors.length]}; font-weight:bold`;
-                        }
-                    }
-                    
-                    if (style !== currentStyle) {
-                        rowStr += "%c";
-                        rowStyles.push(style);
-                        currentStyle = style;
-                    }
-                    rowStr += char;
-                }
-                console.log(rowStr, ...rowStyles);
+                ctx.stroke();
             }
             
-            console.log(`%c     └${'─'.repeat(W)}`, "color:#64748b");
-            
-            let axisArr = Array(W).fill(' ');
-            [12, 14, 16, 18, 20].forEach(val => {
-                if (val >= minX && val <= maxX) {
-                    const pos = Math.round(((val - minX) / (maxX - minX || 1)) * (W - 1));
-                    const str = val.toString();
-                    for(let i=0; i<str.length; i++) if(pos+i < W) axisArr[pos+i] = str[i];
-                }
-            });
-            console.log(`%c      ${axisArr.join('')} km/h`, "color:#64748b; font-weight:bold");
+            // Legend
+            ctx.textAlign = "left"; ctx.font = "bold 12px sans-serif";
+            ctx.fillText("● " + s.label, pad + 10, 40 + i*20);
         });
+        
+        // Axis Labels
+        ctx.fillStyle = "#666"; ctx.textAlign = "center";
+        ctx.fillText("Speed (km/h)", w/2, h - 5);
+        ctx.save(); ctx.translate(15, h/2); ctx.rotate(-Math.PI/2);
+        ctx.fillText("Power (W)", 0, 0);
+        ctx.restore();
     }
-
-    drawConsoleGraph("AVG POWER CURVES", "Optimal Avg Power (W)");
-    drawConsoleGraph("NORMALIZED POWER CURVES", "Optimal Norm Power (W)");
-
-    // Create Copy Button
-    const copyBtn = document.createElement('button');
-    copyBtn.innerText = "📋 COPY CSV RESULTS";
-    Object.assign(copyBtn.style, {
-        position: 'fixed', bottom: '20px', right: '20px', zIndex: 10000,
-        padding: '12px 24px', background: '#2563eb', color: 'white',
-        border: 'none', borderRadius: '8px', fontWeight: 'bold',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.3)', cursor: 'pointer',
-        fontSize: '14px'
-    });
-    copyBtn.onclick = () => {
-        navigator.clipboard.writeText(csvContent);
-        copyBtn.innerText = "✅ COPIED!";
-        copyBtn.style.background = '#16a34a';
-        setTimeout(() => copyBtn.remove(), 2000);
-    };
-    document.body.appendChild(copyBtn);
-
-    // Restore UI
-    document.getElementById('btn-reset').click();
-    console.log("\n%cDone! Click the blue button to copy CSV.", "color: #666;");
-})();
+}
