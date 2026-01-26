@@ -91,18 +91,20 @@ async function runBatchAnalysis() {
 
     // --- 2. DEFINE TEST CASES (FROM UI) ---
     const p1Key = document.getElementById('batch-p1-sel').value;
-    const p1Vals = [
-        document.getElementById('batch-p1-v1').value,
-        document.getElementById('batch-p1-v2').value,
-        document.getElementById('batch-p1-v3').value
-    ].filter(v => v.trim() !== "").map(parseFloat).filter(v => !isNaN(v));
-
     const p2Key = document.getElementById('batch-p2-sel').value;
-    const p2Vals = [
-        document.getElementById('batch-p2-v1').value,
-        document.getElementById('batch-p2-v2').value,
-        document.getElementById('batch-p2-v3').value
-    ].filter(v => v.trim() !== "").map(parseFloat).filter(v => !isNaN(v));
+
+    const getVals = (key, idPrefix) => {
+        const raw = [
+            document.getElementById(idPrefix + '-v1').value,
+            document.getElementById(idPrefix + '-v2').value,
+            document.getElementById(idPrefix + '-v3').value
+        ].filter(v => v.trim() !== "");
+        if (key === 'foil_profile') return raw;
+        return raw.map(parseFloat).filter(v => !isNaN(v));
+    };
+
+    const p1Vals = getVals(p1Key, 'batch-p1');
+    const p2Vals = getVals(p2Key, 'batch-p2');
 
     if (p1Vals.length === 0 || p2Vals.length === 0) {
         alert("Please enter at least one valid value for both Primary and Secondary parameters.");
@@ -117,8 +119,13 @@ async function runBatchAnalysis() {
     }
 
     // Helper for Unit Conversion
-    const applyParam = (key, val) => {
+    const applyParam = async (key, val) => {
         if (key === 'S' || key === 'S_stab') SIM.config[key] = val / 10000;
+        else if (key === 'foil_profile') {
+            if (typeof loadPresetAirfoil === 'function') {
+                await loadPresetAirfoil(val);
+            }
+        }
         else SIM.config[key] = val;
     };
 
@@ -333,10 +340,11 @@ async function runBatchAnalysis() {
         { key: 'rider_offset', label: 'Offset', unit: 'm', fixed: 2 },
         { key: 'water_temp', label: 'Water Temp', unit: '°C', fixed: 0 },
         { key: 'stab_angle', label: 'Stab Angle', unit: '°', fixed: 1 },
-        { key: 'AR_stab', label: 'Stab AR', unit: '', fixed: 1 }
+        { key: 'AR_stab', label: 'Stab AR', unit: '', fixed: 1 },
+        { key: 'polar_name', label: 'Foil Profile', unit: '', fixed: undefined }
     ];
 
-    const constantParams = paramDefs.filter(p => p.key !== p1Key && p.key !== p2Key);
+    const constantParams = paramDefs.filter(p => p.key !== p1Key && p.key !== p2Key && (p.key !== 'polar_name' || (p1Key !== 'foil_profile' && p2Key !== 'foil_profile')));
 
     const infoWrapper = document.createElement('div');
     infoWrapper.style.cssText = "width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
@@ -352,7 +360,7 @@ async function runBatchAnalysis() {
     constantParams.forEach(p => {
         let val = SIM.config[p.key];
         if (p.scale) val *= p.scale;
-        const valStr = (p.fixed !== undefined) ? val.toFixed(p.fixed) : val;
+        const valStr = (p.fixed !== undefined && typeof val === 'number') ? val.toFixed(p.fixed) : (val || '-');
         const item = document.createElement('div');
         item.style.cssText = "background: #f1f5f9; padding: 4px 8px; border-radius: 4px;";
         item.innerHTML = `<span style="color: #64748b; font-weight: 600;">${p.label}:</span> <span style="font-weight: bold; color: #0f172a;">${valStr}</span> ${p.unit}`;
@@ -435,8 +443,8 @@ async function runBatchAnalysis() {
             const seriesData = { label: label, points: [], color: color };
             
             // Apply Params
-            applyParam(p1Key, v1);
-            applyParam(p2Key, v2);
+            await applyParam(p1Key, v1);
+            await applyParam(p2Key, v2);
 
             // Iterate Speeds
             for (let spd of speeds) {

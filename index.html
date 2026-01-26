@@ -342,6 +342,9 @@
 
             <div class="control-section" style="background-color: #eef2ff; border: 1px solid #c7d2fe; margin-top: 10px;">
                 <div class="step-label" style="color: #3730a3;">Batch Analysis</div>
+                <div style="font-size: 10px; color: #3730a3; margin-bottom: 10px; line-height: 1.4; opacity: 0.9;">
+                    For reliable results, restrict the optimization ranges in Step 2 as much as possible. If the search space is too broad, the optimizer may fail to find the global power optimum. If no solution is found for a given parameter set and search range, no dot will appear on the graph.
+                </div>
                 <div class="control-group">
                     <label>Primary Parameter</label>
                     <select id="batch-p1-sel" style="font-size:10px; padding:2px;">
@@ -355,11 +358,12 @@
                         <option value="water_temp">Water Temp (°C)</option>
                         <option value="stab_angle">Stab Angle (°)</option>
                         <option value="AR_stab">Stab AR</option>
+                        <option value="foil_profile">Foil Profile</option>
                     </select>
                     <div class="flex-gap-xs">
-                        <input type="number" id="batch-p1-v1" value="1300" class="range-number-input" style="width:33%">
-                        <input type="number" id="batch-p1-v2" value="1600" class="range-number-input" style="width:33%">
-                        <input type="number" id="batch-p1-v3" value="1900" class="range-number-input" style="width:33%">
+                        <input type="text" id="batch-p1-v1" value="1300" class="range-number-input" style="width:33%">
+                        <input type="text" id="batch-p1-v2" value="1600" class="range-number-input" style="width:33%">
+                        <input type="text" id="batch-p1-v3" value="1900" class="range-number-input" style="width:33%">
                     </div>
                 </div>
                 <div class="control-group">
@@ -375,11 +379,12 @@
                         <option value="water_temp">Water Temp (°C)</option>
                         <option value="stab_angle">Stab Angle (°)</option>
                         <option value="AR_stab">Stab AR</option>
+                        <option value="foil_profile">Foil Profile</option>
                     </select>
                     <div class="flex-gap-xs">
-                        <input type="number" id="batch-p2-v1" value="70" class="range-number-input" style="width:33%">
-                        <input type="number" id="batch-p2-v2" value="80" class="range-number-input" style="width:33%">
-                        <input type="number" id="batch-p2-v3" value="90" class="range-number-input" style="width:33%">
+                        <input type="text" id="batch-p2-v1" value="70" class="range-number-input" style="width:33%">
+                        <input type="text" id="batch-p2-v2" value="80" class="range-number-input" style="width:33%">
+                        <input type="text" id="batch-p2-v3" value="90" class="range-number-input" style="width:33%">
                     </div>
                 </div>
                 <div class="control-group">
@@ -2037,8 +2042,48 @@ all_airfoils.forEach(name => {
     airfoilSelect.appendChild(option);
 });
 
+function updateBatchInputs(selId) {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const isFoil = sel.value === 'foil_profile';
+    const prefix = selId.replace('-sel', '');
+    
+    for(let i=1; i<=3; i++) {
+        const elId = `${prefix}-v${i}`;
+        const oldEl = document.getElementById(elId);
+        if (!oldEl) continue;
+        
+        let newEl;
+        if (isFoil) {
+            newEl = document.createElement('select');
+            const empty = document.createElement('option');
+            empty.value = "";
+            empty.text = "--";
+            newEl.appendChild(empty);
+            all_airfoils.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.text = f.toUpperCase();
+                if (oldEl.value === f) opt.selected = true;
+                newEl.appendChild(opt);
+            });
+        } else {
+            newEl = document.createElement('input');
+            newEl.type = 'text';
+            newEl.value = oldEl.value;
+        }
+        newEl.id = elId;
+        newEl.className = oldEl.className;
+        newEl.style.cssText = oldEl.style.cssText;
+        oldEl.replaceWith(newEl);
+    }
+}
+
+document.getElementById('batch-p1-sel').addEventListener('change', () => updateBatchInputs('batch-p1-sel'));
+document.getElementById('batch-p2-sel').addEventListener('change', () => updateBatchInputs('batch-p2-sel'));
+
 function loadPresetAirfoil(foilName) {
-    if (!foilName) return;
+    if (!foilName) return Promise.resolve();
     let geomPath, polarPath;
     if (symmetric_airfoils.includes(foilName)) {
         geomPath = `naca_data/symmetric/geometry/${foilName}_geom.txt`;
@@ -2048,8 +2093,10 @@ function loadPresetAirfoil(foilName) {
         polarPath = `naca_data/asymmetric/polar_data/${foilName}_re500000.csv`;
     }
 
+    const promises = [];
+
     if (geomPath) {
-        fetch(geomPath)
+        promises.push(fetch(geomPath)
             .then(response => response.text())
             .then(text => {
                 const lines = text.split(/\r?\n/);
@@ -2075,11 +2122,11 @@ function loadPresetAirfoil(foilName) {
                     document.getElementById('disp-foil-name').textContent = name.substring(0, 20);
                     drawAirfoilShape();
                 } else { console.error("Could not parse airfoil coordinates."); }
-            });
+            }));
     }
 
     if (polarPath) {
-        fetch(polarPath)
+        promises.push(fetch(polarPath)
             .then(response => {
                 if (!response.ok) {
                     // If the specific Re polar doesn't exist, fall back to no polar
@@ -2124,8 +2171,10 @@ function loadPresetAirfoil(foilName) {
                 } else {
                     console.error("Could not parse polar data.");
                 }
-            });
+            }));
     }
+    
+    return Promise.all(promises);
 }
 
 airfoilSelect.addEventListener('change', (e) => {
@@ -2520,6 +2569,9 @@ document.getElementById('btn-reset').addEventListener('click', () => {
     
     // Clear history for clean restart
     state.liftHistory = []; state.thrustHistory = []; state.powerHistory = []; state.normPowerHistory = []; state.avgPowerHistory = []; state.avgThrustHistory = []; state.avgLiftHistory = []; state.linearPowerHistory = []; state.rotationalPowerHistory = []; state.gForceHistory = []; state.avgGForceHistory = [];
+
+    // Reset optimization limits
+    document.getElementById('btn-reset-limits').click();
 });
 
 document.getElementById('btn-replay').addEventListener('click', () => {
