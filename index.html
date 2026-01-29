@@ -12,9 +12,6 @@
     <header id="main-header">
         <div>
             <div id="header-title">Pumpfoil Physics Simulator</div>
-            <div style="font-size: 10px; margin-top: 2px; color: #64748b;">
-                <a href="https://www.instagram.com/foilien/" target="_blank" style="color: #0369a1; text-decoration: none;">@foilien</a>
-            </div>
         </div>
         <button id="doc-toggle">Documentation & About</button>
     </header>
@@ -22,6 +19,9 @@
     <div id="main-container">
         <div class="canvas-wrapper">
             <canvas id="simCanvas" width="900" height="380"></canvas>
+            <div style="position: absolute; top: 10px; left: 10px; z-index: 100; font-size: 11px; color: #475569; background: rgba(255,255,255,0.8); padding: 2px 6px; border-radius: 4px;">
+                <a href="https://www.instagram.com/foilien/" target="_blank" style="color: #0369a1; text-decoration: none; font-weight: bold;">@foilien</a>
+            </div>
             <div id="ui-overlay">
                 <strong>Live Telemetry</strong><br>
                 Time: <span id="val-time">0.00</span> s<br>
